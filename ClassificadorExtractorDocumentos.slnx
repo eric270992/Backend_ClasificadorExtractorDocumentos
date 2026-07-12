@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ClassificadorExtractorDocumentos.Api/ClassificadorExtractorDocumentos.Api.csproj" />
+    <Project Path="src/ClassificadorExtractorDocumentos.Application/ClassificadorExtractorDocumentos.Application.csproj" />
+    <Project Path="src/ClassificadorExtractorDocumentos.Domain/ClassificadorExtractorDocumentos.Domain.csproj" />
+    <Project Path="src/ClassificadorExtractorDocumentos.Infrastructure/ClassificadorExtractorDocumentos.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClassificadorExtractorDocumentos.UnitTests/ClassificadorExtractorDocumentos.UnitTests.csproj" />
+  </Folder>
+</Solution>

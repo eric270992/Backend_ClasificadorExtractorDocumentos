@@ -1,0 +1,12 @@
+## .NET
+bin/
+obj/
+*.user
+.vs/
+
+## Datos de ingesta (no versionados; se generan en runtime)
+**/App_Data/
+
+## Angular (E1-F5)
+node_modules/
+dist/

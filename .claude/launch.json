@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "docflow-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "cwd": "C:/Users/eclota/source/repos_vscode/ClassificadorExtractorDocumentos",
+      "port": 4200
+    }
+  ]
+}
