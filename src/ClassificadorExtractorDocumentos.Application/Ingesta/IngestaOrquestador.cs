@@ -1,23 +1,23 @@
-using System.Globalization;
 using ClassificadorExtractorDocumentos.Application.Extraccion;
 using ClassificadorExtractorDocumentos.Application.Validacion;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
-using ClassificadorExtractorDocumentos.Domain.Entities;
 using ClassificadorExtractorDocumentos.Domain.Validacion;
 
 namespace ClassificadorExtractorDocumentos.Application.Ingesta;
 
 /// <summary>
 /// Orquestador manual de Etapa 1 (patrón Orchestrator, SPEC §0.4): encadena
-/// ingesta → Extractor → Validador → persistencia transaccional. En E2-S1 será
-/// sustituido por un Workflow de Microsoft Agent Framework sin tocar los agentes.
+/// ingesta → Extractor → Validador → persistencia transaccional.
+/// En Etapa 2 el pipeline por defecto pasa a ser <see cref="Maf.MafIngestaOrquestador"/>, pero
+/// esta implementación se mantiene como plan B (SPEC §7): si MAF diera problemas, basta cambiar
+/// el registro de <see cref="IIngestaPipeline"/> en la DI para volver aquí.
 /// </summary>
 public class IngestaOrquestador(
     IngestaDocumentoService ingestaService,
     ExtractorAgent extractorAgent,
     ValidadorAgent validadorAgent,
     IFacturaStagingRepository repositorio,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider) : IIngestaPipeline
 {
     public async Task<ResultadoIngesta> ProcesarAsync(Stream pdfStream, CancellationToken cancellationToken = default)
     {
@@ -47,72 +47,11 @@ public class IngestaOrquestador(
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime));
         var validacion = validadorAgent.Validar(contexto);
 
-        // 4. Persistencia transaccional (todo o nada). Los campos NOT NULL de staging reciben
-        // placeholders documentados cuando la extracción devolvió null (el estado Rechazada y
-        // JsonOriginalExtraido conservan la verdad del documento).
-        var entidad = MapearAEntidad(documento, extraccion, validacion);
+        // 4. Persistencia transaccional (todo o nada)
+        var entidad = FacturaStagingMapper.Map(documento, extraccion, validacion, timeProvider.GetUtcNow().UtcDateTime);
         var facturaId = await repositorio.GuardarAsync(
             entidad, factura.Emisor.Nif, factura.Emisor.Nombre, cancellationToken);
 
         return ResultadoIngesta.Ok(documento.Id, facturaId, validacion.Estado, validacion.Incidencias);
     }
-
-    private FacturaStaging MapearAEntidad(
-        DocumentoIngestado documento, ResultadoExtraccion extraccion, ResultadoValidacion validacion)
-    {
-        var f = extraccion.Factura!;
-        var fechaIngesta = timeProvider.GetUtcNow().UtcDateTime;
-
-        return new FacturaStaging
-        {
-            NumeroFactura = f.Factura.Numero ?? $"(SIN-NUMERO)-{documento.Id.ToString()[..8]}",
-            FechaFactura = ParsearFecha(f.Factura.Fecha) ?? DateOnly.FromDateTime(fechaIngesta),
-            FechaVencimiento = ParsearFecha(f.Factura.Vencimiento),
-            Moneda = f.Factura.Moneda.Length == 3 ? f.Factura.Moneda : "EUR",
-            BaseImponible = f.Totales.BaseImponible ?? 0m,
-            CuotaIva = f.Totales.CuotaIva ?? 0m,
-            RetencionIrpf = f.Totales.RetencionIrpf,
-            Total = f.Totales.Total ?? 0m,
-            ReverseCharge = f.Metadatos.ReverseCharge,
-            Estado = validacion.Estado,
-            JsonOriginalExtraido = extraccion.JsonOriginal!,
-            NivelExtraccion = ExtractorAgent.NivelExtraccionGenerica,
-            RutaPdfOriginal = documento.RutaPdf,
-            FechaIngesta = fechaIngesta,
-            Lineas = f.Lineas.Select((l, i) => new FacturaLinea
-            {
-                NumLinea = i + 1,
-                Descripcion = l.Descripcion ?? "(sin descripción)",
-                Cantidad = l.Cantidad ?? 0m,
-                PrecioUnitario = l.PrecioUnitario ?? 0m,
-                PorcentajeIva = l.PorcentajeIva ?? 0m,
-                ImporteLinea = l.ImporteLinea ?? 0m,
-            }).ToList(),
-            Incidencias = validacion.Incidencias.Select(i => new ValidacionIncidencia
-            {
-                Codigo = i.Codigo,
-                Detalle = i.Detalle,
-                FechaCreacion = fechaIngesta,
-            }).ToList(),
-        };
-    }
-
-    private static DateOnly? ParsearFecha(string? iso) =>
-        DateOnly.TryParseExact(iso, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var fecha)
-            ? fecha
-            : null;
-}
-
-public sealed record ResultadoIngesta(
-    Guid DocumentoId,
-    int? FacturaId,
-    EstadoFactura? Estado,
-    IReadOnlyList<Incidencia> Incidencias,
-    string? Error)
-{
-    public static ResultadoIngesta Ok(Guid documentoId, int facturaId, EstadoFactura estado, IReadOnlyList<Incidencia> incidencias) =>
-        new(documentoId, facturaId, estado, incidencias, null);
-
-    public static ResultadoIngesta ErrorExtraccion(Guid documentoId, string error) =>
-        new(documentoId, null, null, [], error);
 }

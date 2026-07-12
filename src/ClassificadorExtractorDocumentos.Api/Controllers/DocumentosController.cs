@@ -8,7 +8,7 @@ namespace ClassificadorExtractorDocumentos.Api.Controllers;
 [ApiController]
 [Route("documentos")]
 public class DocumentosController(
-    IngestaOrquestador orquestador,
+    IIngestaPipeline orquestador,
     IngestaDocumentoService ingestaService,
     ExtractorAgent extractorAgent,
     IDocumentStorage documentStorage) : ControllerBase

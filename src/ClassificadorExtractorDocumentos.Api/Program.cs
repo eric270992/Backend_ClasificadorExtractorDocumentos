@@ -20,7 +20,7 @@ namespace ClassificadorExtractorDocumentos
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
-            builder.Services.AddApplication();
+            builder.Services.AddApplication(builder.Configuration);
             builder.Services.AddInfrastructure(builder.Configuration);
 
             // CORS para el frontend Angular. En dev el proxy evita CORS, pero esto permite
