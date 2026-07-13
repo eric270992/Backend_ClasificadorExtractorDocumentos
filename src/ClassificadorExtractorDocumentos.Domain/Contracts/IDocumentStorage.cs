@@ -2,11 +2,14 @@ namespace ClassificadorExtractorDocumentos.Domain.Contracts;
 
 public interface IDocumentStorage
 {
-    /// <summary>Guarda el PDF original y sus páginas renderizadas bajo una carpeta propia del documento.</summary>
-    /// <returns>Ruta del PDF guardado y rutas de cada página PNG, en orden.</returns>
-    Task<(string RutaPdf, IReadOnlyList<string> RutasImagenes)> GuardarDocumentoAsync(
+    /// <summary>Guarda el documento original (PDF o imagen) y sus páginas renderizadas a PNG bajo una
+    /// carpeta propia del documento.</summary>
+    /// <param name="extensionOriginal">Extensión del original sin punto: "pdf", "jpg", "png".</param>
+    /// <returns>Ruta del original guardado y rutas de cada página PNG, en orden.</returns>
+    Task<(string RutaOriginal, IReadOnlyList<string> RutasImagenes)> GuardarDocumentoAsync(
         Guid documentoId,
-        byte[] pdfBytes,
+        byte[] originalBytes,
+        string extensionOriginal,
         IReadOnlyList<byte[]> paginasPng,
         CancellationToken cancellationToken = default);
 

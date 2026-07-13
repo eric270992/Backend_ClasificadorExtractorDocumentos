@@ -26,7 +26,7 @@ public class IngestaOrquestadorTests
 
     private static IngestaOrquestador CrearOrquestador(string respuestaLlm, RepositorioFake repo)
     {
-        var ingesta = new IngestaDocumentoService(new ConversorFake(), new StorageFake());
+        var ingesta = new IngestaDocumentoService(new ConversorFake(), new NormalizerFake(), new StorageFake());
         var extractor = new ExtractorAgent(new LlmFake(respuestaLlm));
         var validador = new ValidadorAgent(
         [
@@ -43,7 +43,7 @@ public class IngestaOrquestadorTests
         var repo = new RepositorioFake();
         var orquestador = CrearOrquestador(JsonFacturaValida, repo);
 
-        var resultado = await orquestador.ProcesarAsync(new MemoryStream([1]));
+        var resultado = await orquestador.ProcesarAsync(new MemoryStream([0x25, 0x50, 0x44, 0x46]));
 
         Assert.Null(resultado.Error);
         Assert.Equal(EstadoFactura.Validada, resultado.Estado);
@@ -60,7 +60,7 @@ public class IngestaOrquestadorTests
         var repo = new RepositorioFake { SimularDuplicado = true };
         var orquestador = CrearOrquestador(JsonFacturaValida, repo);
 
-        var resultado = await orquestador.ProcesarAsync(new MemoryStream([1]));
+        var resultado = await orquestador.ProcesarAsync(new MemoryStream([0x25, 0x50, 0x44, 0x46]));
 
         Assert.Equal(EstadoFactura.Rechazada, resultado.Estado);
         Assert.Contains(resultado.Incidencias, i => i.Codigo == "DUPLICADO");
@@ -74,7 +74,7 @@ public class IngestaOrquestadorTests
         var repo = new RepositorioFake();
         var orquestador = CrearOrquestador("respuesta basura sin json", repo);
 
-        var resultado = await orquestador.ProcesarAsync(new MemoryStream([1]));
+        var resultado = await orquestador.ProcesarAsync(new MemoryStream([0x25, 0x50, 0x44, 0x46]));
 
         Assert.NotNull(resultado.Error);
         Assert.Null(resultado.FacturaId);
@@ -90,7 +90,7 @@ public class IngestaOrquestadorTests
         var orquestador = CrearOrquestador(JsonFacturaValida, repo);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => orquestador.ProcesarAsync(new MemoryStream([1])));
+            () => orquestador.ProcesarAsync(new MemoryStream([0x25, 0x50, 0x44, 0x46])));
     }
 
     // ── Fakes ──────────────────────────────────────────────────────────────
@@ -107,15 +107,21 @@ public class IngestaOrquestadorTests
             Task.FromResult<IReadOnlyList<byte[]>>([[1, 2, 3]]);
     }
 
+    private sealed class NormalizerFake : IImagenNormalizer
+    {
+        public Task<byte[]> NormalizarAPngAsync(byte[] imagen, CancellationToken ct = default) =>
+            Task.FromResult<byte[]>([1, 2, 3]);
+    }
+
     private sealed class StorageFake : IDocumentStorage
     {
         private IReadOnlyList<byte[]>? _paginas;
 
         public Task<(string, IReadOnlyList<string>)> GuardarDocumentoAsync(
-            Guid id, byte[] pdf, IReadOnlyList<byte[]> paginas, CancellationToken ct = default)
+            Guid id, byte[] original, string extensionOriginal, IReadOnlyList<byte[]> paginas, CancellationToken ct = default)
         {
             _paginas = paginas;
-            return Task.FromResult(($"mem://{id}/original.pdf", (IReadOnlyList<string>)[$"mem://{id}/page-1.png"]));
+            return Task.FromResult(($"mem://{id}/original.{extensionOriginal}", (IReadOnlyList<string>)[$"mem://{id}/page-1.png"]));
         }
 
         public Task<IReadOnlyList<byte[]>?> ObtenerImagenesAsync(Guid id, CancellationToken ct = default) =>

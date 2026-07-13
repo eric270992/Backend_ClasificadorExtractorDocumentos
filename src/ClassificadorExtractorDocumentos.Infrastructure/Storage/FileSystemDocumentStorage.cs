@@ -7,17 +7,18 @@ public class FileSystemDocumentStorage(IOptions<StorageOptions> options) : IDocu
 {
     private readonly string _basePath = options.Value.BasePath;
 
-    public async Task<(string RutaPdf, IReadOnlyList<string> RutasImagenes)> GuardarDocumentoAsync(
+    public async Task<(string RutaOriginal, IReadOnlyList<string> RutasImagenes)> GuardarDocumentoAsync(
         Guid documentoId,
-        byte[] pdfBytes,
+        byte[] originalBytes,
+        string extensionOriginal,
         IReadOnlyList<byte[]> paginasPng,
         CancellationToken cancellationToken = default)
     {
         var carpetaDocumento = Path.Combine(_basePath, documentoId.ToString());
         Directory.CreateDirectory(carpetaDocumento);
 
-        var rutaPdf = Path.Combine(carpetaDocumento, "original.pdf");
-        await File.WriteAllBytesAsync(rutaPdf, pdfBytes, cancellationToken);
+        var rutaOriginal = Path.Combine(carpetaDocumento, $"original.{extensionOriginal}");
+        await File.WriteAllBytesAsync(rutaOriginal, originalBytes, cancellationToken);
 
         var rutasImagenes = new List<string>();
         for (var i = 0; i < paginasPng.Count; i++)
@@ -27,7 +28,7 @@ public class FileSystemDocumentStorage(IOptions<StorageOptions> options) : IDocu
             rutasImagenes.Add(rutaImagen);
         }
 
-        return (rutaPdf, rutasImagenes);
+        return (rutaOriginal, rutasImagenes);
     }
 
     public async Task<IReadOnlyList<byte[]>?> ObtenerImagenesAsync(Guid documentoId, CancellationToken cancellationToken = default)
