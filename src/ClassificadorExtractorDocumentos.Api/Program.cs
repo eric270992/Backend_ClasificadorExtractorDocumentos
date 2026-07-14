@@ -1,5 +1,7 @@
 using ClassificadorExtractorDocumentos.Application;
 using ClassificadorExtractorDocumentos.Infrastructure;
+using ClassificadorExtractorDocumentos.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClassificadorExtractorDocumentos
 {
@@ -44,6 +46,12 @@ namespace ClassificadorExtractorDocumentos
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
+
+                // Auto-migración en desarrollo: crea la BD y aplica migraciones al arrancar, para que
+                // el proyecto funcione en un PC nuevo sin pasos manuales de EF. En producción, la
+                // migración se gestionaría de forma controlada (no automática).
+                using var scope = app.Services.CreateScope();
+                scope.ServiceProvider.GetRequiredService<DocFlowDbContext>().Database.Migrate();
             }
 
             app.UseHttpsRedirection();

@@ -49,6 +49,9 @@ Api  →  Application  →  Domain  ←  Infrastructure
 
 ## 🚀 Com executar-ho
 
+> 📖 **Guia completa pas a pas (instal·lació, PC nou, resolució de problemes)**:
+> **[docs/installation-guide.md](docs/installation-guide.md)**
+
 ### Requisits
 - .NET 10 SDK · Node.js 20+ · SQL Server LocalDB
 - Una clau d'API de Groq **o** un servidor LLM local (LM Studio/Ollama)
@@ -58,13 +61,10 @@ Api  →  Application  →  Domain  ←  Infrastructure
 ```bash
 cd src/ClassificadorExtractorDocumentos.Api
 
-# 1. Clau del LLM (mai al repo — user-secrets)
+# 1. Clau del LLM (l'únic secret — mai al repo). La cadena de connexió ja és a appsettings.json.
 dotnet user-secrets set "Llm:Perfiles:Groq:ApiKey" "<la-teva-clau>"
 
-# 2. Crear la base de dades
-dotnet ef database update --project ../ClassificadorExtractorDocumentos.Infrastructure
-
-# 3. Arrencar (proveïdor LLM per defecte: Groq)
+# 2. Arrencar (en dev la BD es crea i migra sola). Proveïdor LLM per defecte: Groq
 dotnet run
 #   escolta a http://localhost:5255
 
@@ -75,8 +75,8 @@ dotnet run -- --llm Local
 ### Frontend
 
 El frontend viu en un repositori separat
-(`repos_vscode/ClassificadorExtractorDocumentos`). El proxy de dev redirigeix `/api` cap al backend
-(evita CORS):
+([Frontend_ClasificadorExtractorDocumentos](https://github.com/eric270992/Frontend_ClasificadorExtractorDocumentos)).
+El proxy de dev redirigeix `/api` cap al backend (evita CORS):
 
 ```bash
 npm install
@@ -133,6 +133,7 @@ Tres capes previstes (SPEC §5): **unitaris** (E1, ✅ 133 tests), **integració
 
 | Document | Contingut |
 |---|---|
+| [`docs/installation-guide.md`](docs/installation-guide.md) | **Guia d'instal·lació i ús** (muntar en un PC nou, pas a pas) |
 | [`docs/SPEC.md`](docs/SPEC.md) | Especificació completa (font de veritat, SDD) |
 | [`docs/arquitectura.md`](docs/arquitectura.md) | Guia d'arquitectura amb diagrames (per a no experts en DDD) |
 | [`docs/guio-demo.md`](docs/guio-demo.md) | Guió de demo de 10 min + pla B |
