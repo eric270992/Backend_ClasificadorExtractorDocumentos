@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddSingleton<IImagenNormalizer, Imagen.SkiaImagenNormalizer>();
         services.AddSingleton<IDocumentStorage, FileSystemDocumentStorage>();
         services.AddScoped<IFacturaStagingRepository, FacturaStagingRepository>();
+        services.AddScoped<IFacturaConsultaService, FacturaConsultaService>();
         services.AddScoped<IConsultaSqlEjecutor>(_ => new DapperConsultaSqlEjecutor(
             configuration.GetConnectionString("DocFlowDb")
                 ?? throw new InvalidOperationException("Falta la cadena de conexión 'DocFlowDb'.")));
