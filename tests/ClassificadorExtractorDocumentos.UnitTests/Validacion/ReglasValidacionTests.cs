@@ -130,6 +130,81 @@ public class ReglaIvaCoherenteTests
 
         Assert.Empty(_regla.Validar(Contexto(factura)));
     }
+
+    // ── Camino 2: sin %IVA por línea, pero con %IVA global en los totales ──
+
+    [Fact]
+    public void Usa_el_tipo_global_cuando_las_lineas_no_traen_iva()
+    {
+        // Líneas sin %IVA; totales: base 250, IVA 52,5, tipo global 21% → 250×21% = 52,5 ✓
+        var factura = Valida() with
+        {
+            Lineas = [new LineaExtraida("Servicio", 1, 250m, null, 250m)],
+            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m, PorcentajeIva: 21m),
+        };
+
+        Assert.Empty(_regla.Validar(Contexto(factura)));
+    }
+
+    [Fact]
+    public void Falla_si_el_tipo_global_no_cuadra_con_la_cuota()
+    {
+        // base 250 × 21% = 52,5, pero declara 40 → incidencia
+        var factura = Valida() with
+        {
+            Lineas = [new LineaExtraida("Servicio", 1, 250m, null, 250m)],
+            Totales = new TotalesExtraidos(250m, 40m, null, 290m, PorcentajeIva: 21m),
+        };
+
+        var incidencias = _regla.Validar(Contexto(factura)).ToList();
+
+        Assert.Single(incidencias);
+        Assert.Contains("tipo global", incidencias[0].Detalle);
+    }
+
+    [Fact]
+    public void Deriva_la_base_del_total_si_no_hay_base()
+    {
+        // Solo total 302,5 y tipo global 21% → base derivada 250, cuota esperada 52,5 ✓
+        var factura = Valida() with
+        {
+            Lineas = [new LineaExtraida("Servicio", 1, 250m, null, 250m)],
+            Totales = new TotalesExtraidos(null, 52.5m, null, 302.5m, PorcentajeIva: 21m),
+        };
+
+        Assert.Empty(_regla.Validar(Contexto(factura)));
+    }
+
+    // ── Camino 3: ni %IVA por línea ni global → no verificable ──
+
+    [Fact]
+    public void Marca_revision_si_no_puede_verificar_el_iva()
+    {
+        var factura = Valida() with
+        {
+            Lineas = [new LineaExtraida("Servicio", 1, 250m, null, 250m)],
+            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m), // sin %IVA global
+        };
+
+        var incidencias = _regla.Validar(Contexto(factura)).ToList();
+
+        Assert.Single(incidencias);
+        Assert.Equal(SeveridadIncidencia.Revision, incidencias[0].Severidad);
+        Assert.Contains("No se puede verificar", incidencias[0].Detalle);
+    }
+
+    [Fact]
+    public void Reverse_charge_no_dispara_no_verificable()
+    {
+        // Sin %IVA por línea ni global, pero reverse charge → no debe pedir revisión por IVA
+        var factura = ReverseCharge() with
+        {
+            Lineas = [new LineaExtraida("Cloud", 1, 250m, null, 250m)],
+            Totales = new TotalesExtraidos(250m, 0m, null, 250m),
+        };
+
+        Assert.Empty(_regla.Validar(Contexto(factura)));
+    }
 }
 
 public class ReglaReverseChargeTests

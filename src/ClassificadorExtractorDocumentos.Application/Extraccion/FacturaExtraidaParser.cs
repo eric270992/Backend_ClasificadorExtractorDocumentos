@@ -60,7 +60,8 @@ public static class FacturaExtraidaParser
                     BaseImponible: LeerDecimal(raiz, "totales", "baseImponible"),
                     CuotaIva: LeerDecimal(raiz, "totales", "cuotaIva"),
                     RetencionIrpf: LeerDecimal(raiz, "totales", "retencionIrpf"),
-                    Total: LeerDecimal(raiz, "totales", "total")),
+                    Total: LeerDecimal(raiz, "totales", "total"),
+                    PorcentajeIva: LeerDecimal(raiz, "totales", "porcentajeIva")),
                 Metadatos: new MetadatosExtraidos(
                     Idioma: LeerString(raiz, "metadatos", "idioma"),
                     ReverseCharge: LeerBool(raiz, "metadatos", "reverseCharge") ?? false,

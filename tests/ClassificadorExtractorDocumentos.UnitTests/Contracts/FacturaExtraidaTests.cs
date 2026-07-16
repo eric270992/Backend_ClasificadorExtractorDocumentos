@@ -64,6 +64,41 @@ public class FacturaExtraidaTests
     }
 
     [Fact]
+    public void CuotaIvaEsperadaPorTipoGlobal_usa_la_base_si_existe()
+    {
+        // base 250 × 21% = 52,5
+        var factura = FacturaDePrueba.Valida() with
+        {
+            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m, PorcentajeIva: 21m),
+        };
+
+        Assert.Equal(52.5m, factura.CuotaIvaEsperadaPorTipoGlobal());
+    }
+
+    [Fact]
+    public void CuotaIvaEsperadaPorTipoGlobal_deriva_del_total_si_no_hay_base()
+    {
+        // total 302,5 al 21% → cuota 52,5 (base derivada 250)
+        var factura = FacturaDePrueba.Valida() with
+        {
+            Totales = new TotalesExtraidos(null, 52.5m, null, 302.5m, PorcentajeIva: 21m),
+        };
+
+        Assert.Equal(52.5m, Math.Round(factura.CuotaIvaEsperadaPorTipoGlobal()!.Value, 2));
+    }
+
+    [Fact]
+    public void CuotaIvaEsperadaPorTipoGlobal_es_null_sin_tipo_global()
+    {
+        var factura = FacturaDePrueba.Valida() with
+        {
+            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m),
+        };
+
+        Assert.Null(factura.CuotaIvaEsperadaPorTipoGlobal());
+    }
+
+    [Fact]
     public void CamposObligatoriosAusentes_enumera_lo_que_falta()
     {
         var factura = FacturaDePrueba.Valida() with

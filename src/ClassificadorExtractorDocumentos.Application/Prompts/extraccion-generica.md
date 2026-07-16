@@ -48,7 +48,8 @@ ESQUEMA JSON DE SALIDA (respeta nombres y tipos exactamente):
     "baseImponible": number | null,
     "cuotaIva": number | null,
     "retencionIrpf": number | null,
-    "total": number | null
+    "total": number | null,
+    "porcentajeIva": number | null
   },
   "metadatos": {
     "idioma": "string (código ISO 639-1 del idioma del documento)",

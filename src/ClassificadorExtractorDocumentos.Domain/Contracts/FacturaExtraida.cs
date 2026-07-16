@@ -36,6 +36,29 @@ public sealed record FacturaExtraida(
             ? null
             : Lineas.Sum(l => l.CuotaIva(LineasIncluyenIva)!.Value);
 
+    /// <summary>Cuota de IVA esperada aplicando el %IVA global de los totales (cuando las líneas no lo
+    /// traen). Usa la base imponible; si falta, la deriva del total. Null si no hay % global o no hay
+    /// base ni total con los que calcular.</summary>
+    public decimal? CuotaIvaEsperadaPorTipoGlobal()
+    {
+        if (Totales.PorcentajeIva is not { } pct || pct <= 0m)
+        {
+            return null;
+        }
+
+        var tasa = pct / 100m;
+        if (Totales.BaseImponible is { } baseImp)
+        {
+            return baseImp * tasa;
+        }
+        if (Totales.Total is { } total)
+        {
+            // total = base × (1 + tasa) → cuota = total × tasa / (1 + tasa)
+            return total * tasa / (1m + tasa);
+        }
+        return null;
+    }
+
     /// <summary>Nombres de campos obligatorios ausentes en la extracción (vacío = factura procesable).</summary>
     public IReadOnlyList<string> CamposObligatoriosAusentes()
     {
@@ -80,7 +103,8 @@ public sealed record TotalesExtraidos(
     decimal? BaseImponible,
     decimal? CuotaIva,
     decimal? RetencionIrpf,
-    decimal? Total)
+    decimal? Total,
+    decimal? PorcentajeIva = null)
 {
     /// <summary>Definición del total de una factura: base + cuota IVA − retención IRPF.
     /// Null si falta base o cuota (IRPF ausente cuenta como 0).</summary>
