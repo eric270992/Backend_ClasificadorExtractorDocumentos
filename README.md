@@ -135,6 +135,7 @@ Tres capes previstes (SPEC §5): **unitaris** (E1, ✅ 133 tests), **integració
 |---|---|
 | [`docs/installation-guide.md`](docs/installation-guide.md) | **Guia d'instal·lació i ús** (muntar en un PC nou, pas a pas) |
 | [`docs/SPEC.md`](docs/SPEC.md) | Especificació completa (font de veritat, SDD) |
+| [`docs/de-n-capas-a-clean-architecture.md`](docs/de-n-capas-a-clean-architecture.md) | **Resum ràpid**: el teu vocabulari IDAO/DAO/IService → fitxers reals |
 | [`docs/arquitectura.md`](docs/arquitectura.md) | Guia d'arquitectura amb diagrames (per a no experts en DDD) |
 | [`docs/guio-demo.md`](docs/guio-demo.md) | Guió de demo de 10 min + pla B |
 | [`docs/comparativa-llm-local.md`](docs/comparativa-llm-local.md) | Groq vs LLM local: precisió, velocitat, cost |
