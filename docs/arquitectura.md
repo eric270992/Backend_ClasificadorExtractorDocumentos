@@ -1,106 +1,106 @@
-# 🏛️ Arquitectura de DocFlow AI — guia per entendre el codi
+# 🏛️ Arquitectura de DocFlow AI — guía para entender el código
 
-> Aquest document explica **què fa cada classe i com es relacionen**, i sobretot **per què** el codi
-> està organitzat com està. Està escrit per a algú que ve d'arquitectura clàssica "de N capes" i que
-> **no és expert en DDD ni Clean Architecture**. No cal cap coneixement previ d'aquests termes: els
-> anirem construint des de zero, amb exemples del nostre propi codi.
+> Este documento explica **qué hace cada clase y cómo se relacionan**, y sobre todo **por qué** el código
+> está organizado como está. Está escrito para alguien que viene de arquitectura clásica "de N capas" y que
+> **no es experto en DDD ni Clean Architecture**. No hace falta ningún conocimiento previo de estos términos: los
+> iremos construyendo desde cero, con ejemplos de nuestro propio código.
 
 ---
 
-## 1. El punt de partida: què ja saps (N capes) i què canvia
+## 1. El punto de partida: qué ya sabes (N capas) y qué cambia
 
-En una arquitectura **de N capes** tradicional (la que segurament has fet tota la vida), l'aplicació
-s'apila com un pastís, i **cada capa depèn de la de sota**:
+En una arquitectura **de N capas** tradicional (la que seguramente has hecho toda la vida), la aplicación
+se apila como un pastel, y **cada capa depende de la de abajo**:
 
 ```
-Presentació  (UI / Controllers)
-     │  depèn de ↓
-Lògica de negoci (Services / BLL)
-     │  depèn de ↓
-Accés a dades (DAL / Repositoris / EF)
-     │  depèn de ↓
-Base de dades
+Presentación  (UI / Controllers)
+     │  depende de ↓
+Lógica de negocio (Services / BLL)
+     │  depende de ↓
+Acceso a datos (DAL / Repositorios / EF)
+     │  depende de ↓
+Base de datos
 ```
 
-El problema d'aquest model: **la lògica de negoci depèn de la base de dades**. Si el cor de la teva
-aplicació (les regles que decideixen si una factura és vàlida) necessita conèixer Entity Framework o
-SQL Server per compilar, llavors:
+El problema de este modelo: **la lógica de negocio depende de la base de datos**. Si el corazón de tu
+aplicación (las reglas que deciden si una factura es válida) necesita conocer Entity Framework o
+SQL Server para compilar, entonces:
 
-- No pots provar la lògica sense una base de dades.
-- Canviar de SQL Server a un altre motor toca la lògica de negoci.
-- El "què fa el negoci" i el "com es guarda" queden barrejats.
+- No puedes probar la lógica sin una base de datos.
+- Cambiar de SQL Server a otro motor toca la lógica de negocio.
+- El "qué hace el negocio" y el "cómo se guarda" quedan mezclados.
 
-**Clean Architecture li dona la volta a la fletxa.** En lloc que el negoci depengui de la
-infraestructura, fa que **la infraestructura depengui del negoci**. El negoci queda al centre i **no
-depèn de res**:
+**Clean Architecture le da la vuelta a la flecha.** En lugar de que el negocio dependa de la
+infraestructura, hace que **la infraestructura dependa del negocio**. El negocio queda en el centro y **no
+depende de nada**:
 
 ```
         ┌──────────────────────────────────────────┐
         │                                            │
         │   Api  ───────►  Application  ───────►  Domain   ◄─────── Infrastructure
-        │  (web)          (casos d'ús)      (el cor,        (EF, LLM, disc…)
-        │                                  sense dependències)
+        │  (web)          (casos de uso)    (el corazón,     (EF, LLM, disco…)
+        │                                  sin dependencias)
         │                                            │
         └──────────────────────────────────────────┘
-                 TOTES les fletxes apunten cap a Domain
+                 TODAS las flechas apuntan a Domain
 ```
 
-Fixa't en la diferència clau: **`Infrastructure` (l'accés a dades) apunta cap a `Domain`, no al
-revés**. Això és el que en diuen "invertir la dependència", i és tota la màgia. La resta del document
-explica com ho aconseguim a la pràctica i què hi guanyem.
+Fíjate en la diferencia clave: **`Infrastructure` (el acceso a datos) apunta hacia `Domain`, no al
+revés**. Esto es lo que llaman "invertir la dependencia", y es toda la magia. El resto del documento
+explica cómo lo conseguimos en la práctica y qué ganamos con ello.
 
 ---
 
-## 2. La regla d'or: la "regla de la dependència"
+## 2. La regla de oro: la "regla de la dependencia"
 
-Només hi ha **una regla** que ho governa tot, i val la pena memoritzar-la:
+Solo hay **una regla** que lo gobierna todo, y vale la pena memorizarla:
 
-> **El codi de dins mai coneix el codi de fora. Les dependències sempre apunten cap endins.**
+> **El código de dentro nunca conoce el código de fuera. Las dependencias siempre apuntan hacia adentro.**
 
-"Endins" és el `Domain`. "Enfora" és la web, la base de dades, el LLM, el disc.
+"Adentro" es el `Domain`. "Afuera" es la web, la base de datos, el LLM, el disco.
 
-Traduït al nostre projecte:
+Traducido a nuestro proyecto:
 
-- `Domain` **no té cap** `using` de EF Core, de SQL Server, d'ASP.NET, ni del client HTTP del LLM.
-  Si obres qualsevol fitxer de `Domain`, només veuràs C# pur. Això és deliberat i és el que el fa
-  el "cor estable".
-- `Application` coneix `Domain`, però **no** coneix `Infrastructure` ni la web.
-- `Infrastructure` i `Api` són les capes "de fora": poden conèixer tot el que hi ha més endins.
+- `Domain` **no tiene ningún** `using` de EF Core, de SQL Server, de ASP.NET, ni del cliente HTTP del LLM.
+  Si abres cualquier fichero de `Domain`, solo verás C# puro. Esto es deliberado y es lo que lo convierte
+  en el "corazón estable".
+- `Application` conoce `Domain`, pero **no** conoce `Infrastructure` ni la web.
+- `Infrastructure` y `Api` son las capas "de fuera": pueden conocer todo lo que hay más adentro.
 
-Com pot `Application` orquestrar una crida al LLM o guardar a la base de dades **sense conèixer la
-infraestructura**? Amb **interfícies definides al `Domain`**. És el mecanisme central i el veurem
-en detall a la secció 5.4. Aquesta és la idea que costa més de pair quan véns de N capes, així que
-la repetirem amb exemples.
+¿Cómo puede `Application` orquestar una llamada al LLM o guardar en la base de datos **sin conocer la
+infraestructura**? Con **interfaces definidas en el `Domain`**. Es el mecanismo central y lo veremos
+en detalle en la sección 5.4. Esta es la idea que más cuesta asimilar cuando vienes de N capas, así que
+la repetiremos con ejemplos.
 
 ---
 
-## 3. Els 4 projectes d'un cop d'ull
+## 3. Los 4 proyectos de un vistazo
 
-La solució està partida en 4 projectes .NET (+ un de tests). Cadascun és una capa:
+La solución está partida en 4 proyectos .NET (+ uno de tests). Cada uno es una capa:
 
-| Projecte | Capa | Responsabilitat | De què depèn |
+| Proyecto | Capa | Responsabilidad | De qué depende |
 |---|---|---|---|
-| **`Domain`** | Nucli | Contractes, regles de negoci, càlculs, entitats. El "què" del negoci. | **De res** (només C#) |
-| **`Application`** | Casos d'ús | Orquestra els agents i el flux. El "quan i en quin ordre". | De `Domain` |
-| **`Infrastructure`** | Detalls tècnics | EF Core, client LLM, PDF→imatge, disc, Dapper. El "com" tècnic. | De `Domain` |
-| **`Api`** | Entrada | Endpoints REST, arrencada, injecció de dependències. La "porta". | De tots |
+| **`Domain`** | Núcleo | Contratos, reglas de negocio, cálculos, entidades. El "qué" del negocio. | **De nada** (solo C#) |
+| **`Application`** | Casos de uso | Orquesta los agentes y el flujo. El "cuándo y en qué orden". | De `Domain` |
+| **`Infrastructure`** | Detalles técnicos | EF Core, cliente LLM, PDF→imagen, disco, Dapper. El "cómo" técnico. | De `Domain` |
+| **`Api`** | Entrada | Endpoints REST, arranque, inyección de dependencias. La "puerta". | De todos |
 
-La regla per decidir on va una classe nova: **pregunta't de què necessita dependre**.
-- Si només necessita C# i conceptes del negoci → `Domain`.
-- Si necessita coordinar diverses peces del domini → `Application`.
-- Si necessita una llibreria externa (EF, HttpClient, un SDK) → `Infrastructure`.
-- Si és un endpoint HTTP → `Api`.
+La regla para decidir dónde va una clase nueva: **pregúntate de qué necesita depender**.
+- Si solo necesita C# y conceptos del negocio → `Domain`.
+- Si necesita coordinar varias piezas del dominio → `Application`.
+- Si necesita una librería externa (EF, HttpClient, un SDK) → `Infrastructure`.
+- Si es un endpoint HTTP → `Api`.
 
 ---
 
-## 4. Diagrama de dependències entre projectes
+## 4. Diagrama de dependencias entre proyectos
 
 ```mermaid
 graph TD
     Api["🌐 Api<br/>(Controllers, Program.cs)"]
     App["⚙️ Application<br/>(Agents, Orquestador)"]
-    Dom["💎 Domain<br/>(Contractes, Regles, Entitats)"]
-    Inf["🔌 Infrastructure<br/>(EF, LLM, Disc, Dapper)"]
+    Dom["💎 Domain<br/>(Contratos, Reglas, Entidades)"]
+    Inf["🔌 Infrastructure<br/>(EF, LLM, Disco, Dapper)"]
 
     Api --> App
     Api --> Inf
@@ -113,293 +113,293 @@ graph TD
     style Api fill:#74a892,color:#fff
 ```
 
-**Llegeix les fletxes com "coneix / depèn de".** Observa dues coses:
+**Lee las flechas como "conoce / depende de".** Observa dos cosas:
 
-1. **Totes les fletxes acaben a `Domain`** (el node verd fosc). Ningú no li apunta a l'`Api` ni a
-   `Infrastructure` des de dins: són fulles de l'arbre.
-2. **`Application` i `Infrastructure` no es coneixen entre si.** `Application` demana feina a través
-   d'interfícies de `Domain`; qui les implementa (`Infrastructure`) l'hi injecta l'`Api` en arrencar.
-   Aquesta és la inversió de dependència en acció.
+1. **Todas las flechas acaban en `Domain`** (el nodo verde oscuro). Nadie apunta a la `Api` ni a
+   `Infrastructure` desde dentro: son hojas del árbol.
+2. **`Application` e `Infrastructure` no se conocen entre sí.** `Application` pide trabajo a través
+   de interfaces de `Domain`; quien las implementa (`Infrastructure`) se lo inyecta la `Api` al arrancar.
+   Esta es la inversión de dependencia en acción.
 
 ---
 
-## 5. `Domain` — el cor del sistema (en detall)
+## 5. `Domain` — el corazón del sistema (en detalle)
 
-Aquest és el projecte més important i el que més conceptes nous introdueix. Conté 5 tipus de coses.
+Este es el proyecto más importante y el que más conceptos nuevos introduce. Contiene 5 tipos de cosas.
 
-### 5.1 `Entities/` — les entitats de persistència
+### 5.1 `Entities/` — las entidades de persistencia
 
-Són les classes que es mapegen a taules de SQL Server via EF Core.
+Son las clases que se mapean a tablas de SQL Server vía EF Core.
 
-| Classe | Taula | Què representa |
+| Clase | Tabla | Qué representa |
 |---|---|---|
-| `Proveedor` | `Proveedores` | Un proveïdor donat d'alta (per NIF únic) |
-| `FacturaStaging` | `FacturasStaging` | La capçalera d'una factura processada |
-| `FacturaLinea` | `FacturasLineas` | Una línia de detall d'una factura |
-| `ValidacionIncidencia` | `ValidacionIncidencias` | Un motiu de revisió/rebuig d'una factura |
-| `ProveedorEjemplo` | `ProveedorEjemplos` | Exemple few-shot d'un proveïdor (buit fins a E2) |
+| `Proveedor` | `Proveedores` | Un proveedor dado de alta (por NIF único) |
+| `FacturaStaging` | `FacturasStaging` | La cabecera de una factura procesada |
+| `FacturaLinea` | `FacturasLineas` | Una línea de detalle de una factura |
+| `ValidacionIncidencia` | `ValidacionIncidencias` | Un motivo de revisión/rechazo de una factura |
+| `ProveedorEjemplo` | `ProveedorEjemplos` | Ejemplo few-shot de un proveedor (vacío hasta E2) |
 | `EstadoFactura` (enum) | — | `PendienteValidacion · Validada · RevisionHumana · Rechazada · IntegradaERP` |
 
-**Nota honesta sobre aquestes entitats i el DDD**: en un DDD "de llibre", una entitat com
-`FacturaStaging` tindria mètodes que protegeixen les seves pròpies regles (per exemple, prohibir
-passar de `Rechazada` a `IntegradaERP`). Ara mateix **són classes de només dades** (el que en diuen
-un *anemic model*), i **està bé que sigui així de moment**: en aquesta fase només hi ha un lloc que
-escriu l'estat (l'orquestador, en crear la fila), o sigui que no hi ha cap invariant que ningú pugui
-violar. Quan a l'Etapa 2 apareguin transicions d'estat de veritat (revisió humana, integració ERP),
-afegirem una màquina d'estats aquí. **La lògica s'afegeix quan hi ha un risc real que protegir, no
-per cerimònia.**
+**Nota honesta sobre estas entidades y el DDD**: en un DDD "de libro", una entidad como
+`FacturaStaging` tendría métodos que protegen sus propias reglas (por ejemplo, prohibir
+pasar de `Rechazada` a `IntegradaERP`). Ahora mismo **son clases de solo datos** (lo que llaman
+un *anemic model*), y **está bien que sea así de momento**: en esta fase solo hay un sitio que
+escribe el estado (el orquestador, al crear la fila), o sea que no hay ningún invariante que nadie pueda
+violar. Cuando en la Etapa 2 aparezcan transiciones de estado de verdad (revisión humana, integración ERP),
+añadiremos una máquina de estados aquí. **La lógica se añade cuando hay un riesgo real que proteger, no
+por ceremonia.**
 
-### 5.2 `ValueObjects/` — conceptes del domini amb regles pròpies
+### 5.2 `ValueObjects/` — conceptos del dominio con reglas propias
 
-Un **value object** (objecte-valor) és un concepte del negoci que no és una entitat (no té Id ni
-cicle de vida) però que **encapsula regles**. La diferència amb un `string` pelat és que centralitza
-el coneixement en un sol lloc.
+Un **value object** (objeto-valor) es un concepto del negocio que no es una entidad (no tiene Id ni
+ciclo de vida) pero que **encapsula reglas**. La diferencia con un `string` pelado es que centraliza
+el conocimiento en un solo lugar.
 
-**`Nif`** (`ValueObjects/Nif.cs`) és el nostre únic value object ara mateix. Abans, el concepte "NIF"
-estava escampat: la normalització ("B-12.345.678" → "B12345678") vivia al parser d'extracció, i la
-validació de format vivia en una regla de validació. Dos llocs pel mateix concepte. Ara tot viu aquí:
+**`Nif`** (`ValueObjects/Nif.cs`) es nuestro único value object ahora mismo. Antes, el concepto "NIF"
+estaba disperso: la normalización ("B-12.345.678" → "B12345678") vivía en el parser de extracción, y la
+validación de formato vivía en una regla de validación. Dos sitios para el mismo concepto. Ahora todo vive aquí:
 
 ```csharp
-Nif.Normalizar("B-12.345.678")   // → "B12345678"  (treu guions, punts, espais, majúscules)
+Nif.Normalizar("B-12.345.678")   // → "B12345678"  (quita guiones, puntos, espacios, mayúsculas)
 Nif.FormatoValido("B12345678")   // → true          (regex ES + VAT UE)
 ```
 
-Qui necessiti normalitzar o validar un NIF (el parser, la regla `NIF_FORMATO`) delega aquí. Un canvi
-a les regles del NIF es fa en un únic fitxer.
+Quien necesite normalizar o validar un NIF (el parser, la regla `NIF_FORMATO`) delega aquí. Un cambio
+en las reglas del NIF se hace en un único fichero.
 
-### 5.3 `Validacion/` — les regles de negoci (patró Strategy)
+### 5.3 `Validacion/` — las reglas de negocio (patrón Strategy)
 
-Aquí viu el comportament de negoci més valuós del sistema: **les 9 regles que decideixen si una
-factura és vàlida**. Estan organitzades amb el patró **Strategy**.
+Aquí vive el comportamiento de negocio más valioso del sistema: **las 9 reglas que deciden si una
+factura es válida**. Están organizadas con el patrón **Strategy**.
 
-> **Patró Strategy explicat des de zero**: en lloc d'un mètode gegant amb un `if` per cada regla,
-> defineixes una **interfície** (`IReglaValidacion`) i **una classe petita per cada regla**. Totes
-> compleixen el mateix contracte. Qui les fa servir (el `ValidadorAgent`) no sap quantes n'hi ha ni
-> què fa cadascuna: només les recorre totes. Afegir una regla десena és crear una classe nova, sense
-> tocar res del que ja funciona. És l'oposat al "mètode de 400 línies amb 9 ifs".
+> **Patrón Strategy explicado desde cero**: en lugar de un método gigante con un `if` por cada regla,
+> defines una **interfaz** (`IReglaValidacion`) y **una clase pequeña por cada regla**. Todas
+> cumplen el mismo contrato. Quien las usa (el `ValidadorAgent`) no sabe cuántas hay ni
+> qué hace cada una: solo las recorre todas. Añadir una regla décima es crear una clase nueva, sin
+> tocar nada de lo que ya funciona. Es lo opuesto al "método de 400 líneas con 9 ifs".
 
-La interfície (`Validacion/IReglaValidacion.cs`):
+La interfaz (`Validacion/IReglaValidacion.cs`):
 
 ```csharp
 public interface IReglaValidacion
 {
-    string Codigo { get; }                                  // p.ex. "CUADRE_TOTAL"
-    IEnumerable<Incidencia> Validar(ContextoValidacion ctx); // retorna 0..N incidències
+    string Codigo { get; }                                  // p.ej. "CUADRE_TOTAL"
+    IEnumerable<Incidencia> Validar(ContextoValidacion ctx); // retorna 0..N incidencias
 }
 ```
 
-El `ContextoValidacion` és una capsa amb tot el que les regles necessiten per decidir **ja
-precalculat**, perquè les regles siguin **pures** (no toquen BD ni rellotge):
+El `ContextoValidacion` es una caja con todo lo que las reglas necesitan para decidir **ya
+precalculado**, para que las reglas sean **puras** (no tocan BD ni reloj):
 
 ```csharp
 record ContextoValidacion(
     FacturaExtraida Factura,       // la factura a validar
-    bool ExisteDuplicado,          // ← el calcula l'orquestador consultant la BD
-    DateOnly FechaReferencia,      // ← "avui" injectat, perquè el test sigui reproduïble
+    bool ExisteDuplicado,          // ← lo calcula el orquestador consultando la BD
+    DateOnly FechaReferencia,      // ← "hoy" inyectado, para que el test sea reproducible
     decimal ToleranciaCuadre);     // ← ±0,02 € de la config
 ```
 
-Les 9 regles (a `Validacion/Reglas/`), amb la seva severitat:
+Las 9 reglas (en `Validacion/Reglas/`), con su severidad:
 
-| Classe | Codi | Severitat | Comprova |
+| Clase | Código | Severidad | Comprueba |
 |---|---|---|---|
-| `ReglaCuadreLineas` | `CUADRE_LINEAS` | Revisió | Σ(línies) ≈ base imposable |
-| `ReglaCuadreTotal` | `CUADRE_TOTAL` | Revisió | base + IVA − IRPF ≈ total |
-| `ReglaIvaCoherente` | `IVA_COHERENTE` | Revisió | quota IVA ≈ Σ(base·%IVA) |
-| `ReglaReverseCharge` | `REVERSE_CHARGE_OK` | Info | reverse charge → IVA ha de ser 0 |
-| `ReglaNifFormato` | `NIF_FORMATO` | Revisió | format de NIF vàlid (delega a `Nif`) |
-| `ReglaCamposObligatorios` | `CAMPOS_OBLIGATORIOS` | **Rebuig** | nif, número, data, total presents |
-| `ReglaConfidenceMinima` | `CONFIDENCE_MINIMA` | Revisió | cap camp obligatori amb confiança < 0,7 |
-| `ReglaFechaRazonable` | `FECHA_RAZONABLE` | Revisió | data ni futura ni de fa >10 anys |
-| `ReglaDuplicado` | `DUPLICADO` | **Rebuig** | (proveïdor + número) ja existeix |
+| `ReglaCuadreLineas` | `CUADRE_LINEAS` | Revisión | Σ(líneas) ≈ base imponible |
+| `ReglaCuadreTotal` | `CUADRE_TOTAL` | Revisión | base + IVA − IRPF ≈ total |
+| `ReglaIvaCoherente` | `IVA_COHERENTE` | Revisión | cuota IVA ≈ Σ(base·%IVA) |
+| `ReglaReverseCharge` | `REVERSE_CHARGE_OK` | Info | reverse charge → IVA debe ser 0 |
+| `ReglaNifFormato` | `NIF_FORMATO` | Revisión | formato de NIF válido (delega a `Nif`) |
+| `ReglaCamposObligatorios` | `CAMPOS_OBLIGATORIOS` | **Rechazo** | nif, número, fecha, total presentes |
+| `ReglaConfidenceMinima` | `CONFIDENCE_MINIMA` | Revisión | ningún campo obligatorio con confianza < 0,7 |
+| `ReglaFechaRazonable` | `FECHA_RAZONABLE` | Revisión | fecha ni futura ni de hace >10 años |
+| `ReglaDuplicado` | `DUPLICADO` | **Rechazo** | (proveedor + número) ya existe |
 
-**Punt clau del refactor recent**: aquestes regles només contenen **política** (quина severitat, quin
-missatge), no **càlcul**. Quan una regla necessita saber "quant sumen les línies" o "quin és el total
-teòric", **ho pregunta al model** (secció 5.5), no s'ho calcula ella. Així el coneixement fiscal viu
-en un sol lloc i les regles queden a una línia:
+**Punto clave del refactor reciente**: estas reglas solo contienen **política** (qué severidad, qué
+mensaje), no **cálculo**. Cuando una regla necesita saber "cuánto suman las líneas" o "cuál es el total
+teórico", **se lo pregunta al modelo** (sección 5.5), no se lo calcula ella. Así el conocimiento fiscal vive
+en un solo lugar y las reglas quedan en una línea:
 
 ```csharp
-// ReglaCuadreTotal, versió actual: el CÀLCUL és del model, la DECISIÓ és de la regla
+// ReglaCuadreTotal, versión actual: el CÁLCULO es del modelo, la DECISIÓN es de la regla
 var diferencia = Math.Abs(t.TotalCalculado!.Value - t.Total.Value);
 if (diferencia > contexto.ToleranciaCuadre)
     yield return new Incidencia(Codigo, "...", SeveridadIncidencia.Revision);
 ```
 
-### 5.4 `Contracts/` — les interfícies (el mecanisme clau de tota l'arquitectura)
+### 5.4 `Contracts/` — las interfaces (el mecanismo clave de toda la arquitectura)
 
-**Aquesta carpeta és la que fa possible la "inversió de dependència".** Presta-hi atenció perquè és
-el concepte que costa més de pair venint de N capes.
+**Esta carpeta es la que hace posible la "inversión de dependencia".** Préstale atención porque es
+el concepto que más cuesta asimilar viniendo de N capas.
 
-El problema: `Application` necessita, per exemple, cridar el LLM. Però el LLM viu a `Infrastructure`
-(un client HTTP amb un SDK), i `Application` **no pot conèixer `Infrastructure`** (trencaria la regla
-de la dependència). Com ho resol?
+El problema: `Application` necesita, por ejemplo, llamar al LLM. Pero el LLM vive en `Infrastructure`
+(un cliente HTTP con un SDK), y `Application` **no puede conocer `Infrastructure`** (rompería la regla
+de la dependencia). ¿Cómo lo resuelve?
 
-**Solució**: `Domain` defineix una **interfície** que descriu *què* necessita, sense dir *com*:
+**Solución**: `Domain` define una **interfaz** que describe *qué* necesita, sin decir *cómo*:
 
 ```csharp
-// Domain/Contracts/ILlmClient.cs — el DOMINI diu "necessito algú que sàpiga parlar amb un LLM"
+// Domain/Contracts/ILlmClient.cs — el DOMINIO dice "necesito a alguien que sepa hablar con un LLM"
 public interface ILlmClient
 {
     Task<string> CompletarAsync(LlmPeticion peticion, CancellationToken ct = default);
 }
 ```
 
-`Application` treballa **només contra aquesta interfície**. Mai veu el client HTTP real.
-`Infrastructure` és qui la **implementa** (`OpenAiCompatibleLlmClient`), i l'`Api` és qui, en
-arrencar, diu "quan algú demani un `ILlmClient`, dona-li aquesta implementació concreta".
+`Application` trabaja **solo contra esta interfaz**. Nunca ve el cliente HTTP real.
+`Infrastructure` es quien la **implementa** (`OpenAiCompatibleLlmClient`), y la `Api` es quien, al
+arrancar, dice "cuando alguien pida un `ILlmClient`, dale esta implementación concreta".
 
-Resultat: pots canviar de Groq a un LLM local **sense tocar ni una línia** de `Domain` ni
-`Application`. De fet ho hem fet: és tota la gràcia de tenir perfils de proveïdor.
+Resultado: puedes cambiar de Groq a un LLM local **sin tocar ni una línea** de `Domain` ni
+`Application`. De hecho lo hemos hecho: es toda la gracia de tener perfiles de proveedor.
 
-Les interfícies (contractes) que viuen a `Domain/Contracts/`:
+Las interfaces (contratos) que viven en `Domain/Contracts/`:
 
-| Interfície | Què demana el domini | Qui la implementa (a `Infrastructure`) |
+| Interfaz | Qué pide el dominio | Quién la implementa (en `Infrastructure`) |
 |---|---|---|
-| `ILlmClient` | "Parla amb un LLM i torna'm text" | `OpenAiCompatibleLlmClient` |
-| `IPdfToImageConverter` | "Converteix un PDF en imatges PNG" | `PdfiumPdfToImageConverter` |
-| `IDocumentStorage` | "Guarda i recupera PDF/imatges" | `FileSystemDocumentStorage` |
-| `IFacturaStagingRepository` | "Persisteix una factura (transaccional)" | `FacturaStagingRepository` |
-| `IConsultaSqlEjecutor` | "Executa un SELECT ja validat" | `DapperConsultaSqlEjecutor` |
+| `ILlmClient` | "Habla con un LLM y devuélveme texto" | `OpenAiCompatibleLlmClient` |
+| `IPdfToImageConverter` | "Convierte un PDF en imágenes PNG" | `PdfiumPdfToImageConverter` |
+| `IDocumentStorage` | "Guarda y recupera PDF/imágenes" | `FileSystemDocumentStorage` |
+| `IFacturaStagingRepository` | "Persiste una factura (transaccional)" | `FacturaStagingRepository` |
+| `IConsultaSqlEjecutor` | "Ejecuta un SELECT ya validado" | `DapperConsultaSqlEjecutor` |
 
-En aquesta mateixa carpeta hi ha també els **DTOs / contractes de dades** que no són entitats de BD:
+En esta misma carpeta hay también los **DTOs / contratos de datos** que no son entidades de BD:
 
-- **`FacturaExtraida`** (i els seus fills `EmisorExtraido`, `LineaExtraida`, `TotalesExtraidos`…):
-  el resultat de l'extracció del LLM. És un `record` immutable, sense identitat ni cicle de vida →
-  un DTO de debò. **Aquí sí que hi ha lògica** (vegeu 5.5).
-- **`DocumentoIngestado`**: resultat de la ingesta (Id + rutes).
-- **`LlmPeticion`**, **`ResultadoConsultaSql`**: paràmetres/resultats de les interfícies.
+- **`FacturaExtraida`** (y sus hijos `EmisorExtraido`, `LineaExtraida`, `TotalesExtraidos`…):
+  el resultado de la extracción del LLM. Es un `record` inmutable, sin identidad ni ciclo de vida →
+  un DTO de verdad. **Aquí sí que hay lógica** (véase 5.5).
+- **`DocumentoIngestado`**: resultado de la ingesta (Id + rutas).
+- **`LlmPeticion`**, **`ResultadoConsultaSql`**: parámetros/resultados de las interfaces.
 
-> **Per què `FacturaExtraida` és un DTO amb lògica però `FacturaStaging` és una entitat sense
-> lògica?** No es distingeixen per tenir mètodes, sinó per tenir **identitat i cicle de vida**.
-> `FacturaExtraida` és un valor de pas (dues extraccions iguals són intercanviables) → tota la lògica
-> de càlcul hi encaixa de forma natural. `FacturaStaging` té Id i evoluciona d'estat → és una entitat,
-> i la seva lògica (transicions) arribarà quan calgui protegir-la.
+> **¿Por qué `FacturaExtraida` es un DTO con lógica pero `FacturaStaging` es una entidad sin
+> lógica?** No se distinguen por tener métodos, sino por tener **identidad y ciclo de vida**.
+> `FacturaExtraida` es un valor de paso (dos extracciones iguales son intercambiables) → toda la lógica
+> de cálculo encaja de forma natural. `FacturaStaging` tiene Id y evoluciona de estado → es una entidad,
+> y su lógica (transiciones) llegará cuando haga falta protegerla.
 
-### 5.5 `FacturaExtraida` amb comportament — "el model respon preguntes"
+### 5.5 `FacturaExtraida` con comportamiento — "el modelo responde preguntas"
 
-Aquest és el resultat del refactor "anti-anèmia". La idea en una frase:
+Este es el resultado del refactor "anti-anemia". La idea en una frase:
 
-> **El model respon preguntes ("quant sumen les línies?"); les regles prenen decisions ("si no
-> quadra, Revisió").**
+> **El modelo responde preguntas ("¿cuánto suman las líneas?"); las reglas toman decisiones ("si no
+> cuadra, Revisión").**
 
-`FacturaExtraida` i els seus fills tenen mètodes de càlcul que abans vivien escampats per les regles:
+`FacturaExtraida` y sus hijos tienen métodos de cálculo que antes vivían dispersos por las reglas:
 
 ```csharp
-factura.SumaLineas()                    // Σ importes de línia (o null si en falta algun)
-factura.ImporteObjetivoLineas()         // base, o base+IVA si les línies porten IVA
-factura.CuotaIvaCalculadaPorLineas()    // Σ (base_línia · %IVA)
+factura.SumaLineas()                    // Σ importes de línea (o null si falta alguno)
+factura.ImporteObjetivoLineas()         // base, o base+IVA si las líneas llevan IVA
+factura.CuotaIvaCalculadaPorLineas()    // Σ (base_línea · %IVA)
 factura.CamposObligatoriosAusentes()    // ["emisor.nif", "totales.total"...]
 totales.TotalCalculado                  // base + IVA − IRPF
-linea.BaseImponible(incluyeIva)         // deriva la base d'un import amb IVA inclòs
+linea.BaseImponible(incluyeIva)         // deriva la base de un importe con IVA incluido
 ```
 
-Benefici concret: el dia que necessitem derivar la base de la plantilla B (que només imprimeix el
-total amb IVA), el mètode `linea.BaseImponible(incluyeIva: true)` **ja existeix i està testejat**, no
-cal reescriure aritmètica fiscal en cap altre lloc.
+Beneficio concreto: el día que necesitemos derivar la base de la plantilla B (que solo imprime el
+total con IVA), el método `linea.BaseImponible(incluyeIva: true)` **ya existe y está testeado**, no
+hace falta reescribir aritmética fiscal en ningún otro sitio.
 
-### 5.6 `Parsers/` — normalitzadors purs
+### 5.6 `Parsers/` — normalizadores puros
 
-`NumeroParser` ("1.234,56 €" → `1234.56m`) i `FechaParser` ("5 de juliol 2026" → "2026-07-05"). Són
-funcions pures de domini: converteixen el que el document diu al format del contracte. Viuen al
-`Domain` perquè és coneixement del negoci (com s'escriuen imports i dates a Espanya) i no necessiten
-res extern.
+`NumeroParser` ("1.234,56 €" → `1234.56m`) y `FechaParser` ("5 de julio 2026" → "2026-07-05"). Son
+funciones puras de dominio: convierten lo que el documento dice al formato del contrato. Viven en el
+`Domain` porque es conocimiento del negocio (cómo se escriben importes y fechas en España) y no necesitan
+nada externo.
 
 ---
 
-## 6. `Application` — els casos d'ús (els "agents" i l'orquestador)
+## 6. `Application` — los casos de uso (los "agentes" y el orquestador)
 
-Aquesta capa **no fa feina tècnica** (no toca EF ni HTTP directament): **coordina**. Diu qui fa què i
-en quin ordre, sempre a través de les interfícies de `Domain`.
+Esta capa **no hace trabajo técnico** (no toca EF ni HTTP directamente): **coordina**. Dice quién hace qué y
+en qué orden, siempre a través de las interfaces de `Domain`.
 
-### 6.1 Els agents
+### 6.1 Los agentes
 
-Cada "agent" del SPEC és una classe aquí:
+Cada "agente" del SPEC es una clase aquí:
 
-- **`ExtractorAgent`** (`Extraccion/`): agafa les imatges, carrega el prompt versionat, crida
-  l'`ILlmClient`, i passa la resposta al `FacturaExtraidaParser`. Si el JSON torna malament, fa **1
-  reintent amb feedback**. Retorna un `ResultadoExtraccion`.
-- **`FacturaExtraidaParser`** (`Extraccion/`): converteix el text del LLM en un `FacturaExtraida`
-  vàlid. És **tolerant** (accepta JSON envoltat de text o de ```` ```json ````), i aplica la xarxa de
-  seguretat del contracte: camp absent → null + confiança 0, mai inventar.
-- **`ValidadorAgent`** (`Validacion/`): rep **totes les regles injectades** (`IEnumerable<IReglaValidacion>`),
-  les executa totes, i deriva l'estat final: `Rechazada` si hi ha algun rebuig, `RevisionHumana` si
-  hi ha alguna revisió, `Validada` si no hi ha res. Les `Info` no penalitzen.
-- **`ConsultorAgent`** (`Consultor/`): pregunta NL → SQL (via LLM) → **SQL-guard** → execució (via
-  `IConsultaSqlEjecutor`) → redacció de la resposta (via LLM). Amb reintent si el SQL falla en
-  executar-se; **mai** reintenta si el guard el bloqueja (postura de seguretat).
-- **`SqlGuard`** (`Consultor/`): el validador de seguretat. Només SELECT, una sentència, sense
-  comentaris, whitelist de 4 taules, paraules prohibides, `TOP 1000` forçat. **Corre sempre abans de
-  tocar la BD.** Viu a `Application` perquè és lògica pura (no necessita la BD per validar el text).
+- **`ExtractorAgent`** (`Extraccion/`): coge las imágenes, carga el prompt versionado, llama
+  al `ILlmClient`, y pasa la respuesta al `FacturaExtraidaParser`. Si el JSON vuelve mal, hace **1
+  reintento con feedback**. Devuelve un `ResultadoExtraccion`.
+- **`FacturaExtraidaParser`** (`Extraccion/`): convierte el texto del LLM en un `FacturaExtraida`
+  válido. Es **tolerante** (acepta JSON envuelto en texto o en ```` ```json ````), y aplica la red de
+  seguridad del contrato: campo ausente → null + confianza 0, nunca inventar.
+- **`ValidadorAgent`** (`Validacion/`): recibe **todas las reglas inyectadas** (`IEnumerable<IReglaValidacion>`),
+  las ejecuta todas, y deriva el estado final: `Rechazada` si hay algún rechazo, `RevisionHumana` si
+  hay alguna revisión, `Validada` si no hay nada. Las `Info` no penalizan.
+- **`ConsultorAgent`** (`Consultor/`): pregunta NL → SQL (vía LLM) → **SQL-guard** → ejecución (vía
+  `IConsultaSqlEjecutor`) → redacción de la respuesta (vía LLM). Con reintento si el SQL falla al
+  ejecutarse; **nunca** reintenta si el guard lo bloquea (postura de seguridad).
+- **`SqlGuard`** (`Consultor/`): el validador de seguridad. Solo SELECT, una sentencia, sin
+  comentarios, whitelist de 4 tablas, palabras prohibidas, `TOP 1000` forzado. **Corre siempre antes de
+  tocar la BD.** Vive en `Application` porque es lógica pura (no necesita la BD para validar el texto).
 
-### 6.2 L'orquestador — el director d'orquestra
+### 6.2 El orquestador — el director de orquesta
 
-**`IngestaOrquestador`** (`Ingesta/IngestaOrquestador.cs`) és el cor del flux d'ingesta. Encadena
-els passos i garanteix la **transaccionalitat**:
+**`IngestaOrquestador`** (`Ingesta/IngestaOrquestador.cs`) es el corazón del flujo de ingesta. Encadena
+los pasos y garantiza la **transaccionalidad**:
 
 ```
 IngestaDocumentoService  →  ExtractorAgent  →  (consulta duplicat)  →  ValidadorAgent  →  repositori (transacció)
 ```
 
-> **Per què un orquestador "manual" i no un framework?** El SPEC (Etapa 2) el substituirà per
-> Microsoft Agent Framework. La gràcia és que **els agents no canviaran**: només canviarà qui els
-> encadena. L'orquestador és una peça deliberadament aïllada per poder-la reemplaçar.
+> **¿Por qué un orquestador "manual" y no un framework?** El SPEC (Etapa 2) lo sustituirá por
+> Microsoft Agent Framework. La gracia es que **los agentes no cambiarán**: solo cambiará quién los
+> encadena. El orquestador es una pieza deliberadamente aislada para poder reemplazarla.
 
-### 6.3 Utilitats compartides
+### 6.3 Utilidades compartidas
 
-- **`PromptLoader`**: carrega els prompts versionats (fitxers `.md` incrustats a l'assembly) i els
-  separa en part de sistema / usuari.
-- **`LlmRespuesta`**: localitza el primer objecte JSON dins la resposta del LLM (compartit entre
-  Extractor i Consultor).
-- **`Prompts/*.md`**: els prompts com a fitxers versionats (`extraccion-generica.md`,
-  `consultor-sql.md`). Es versionen com codi.
+- **`PromptLoader`**: carga los prompts versionados (ficheros `.md` incrustados en el assembly) y los
+  separa en parte de sistema / usuario.
+- **`LlmRespuesta`**: localiza el primer objeto JSON dentro de la respuesta del LLM (compartido entre
+  Extractor y Consultor).
+- **`Prompts/*.md`**: los prompts como ficheros versionados (`extraccion-generica.md`,
+  `consultor-sql.md`). Se versionan como código.
 
 ---
 
-## 7. `Infrastructure` — els detalls tècnics
+## 7. `Infrastructure` — los detalles técnicos
 
-Aquí viu tot el que "s'embruta les mans" amb tecnologia concreta. **Cada classe d'aquí implementa una
-interfície de `Domain`.**
+Aquí vive todo lo que "se ensucia las manos" con tecnología concreta. **Cada clase de aquí implementa una
+interfaz de `Domain`.**
 
-| Classe | Implementa | Tecnologia |
+| Clase | Implementa | Tecnología |
 |---|---|---|
-| `OpenAiCompatibleLlmClient` | `ILlmClient` | `HttpClient` contra API estil OpenAI (Groq / LM Studio) |
-| `PdfiumPdfToImageConverter` | `IPdfToImageConverter` | Llibreria PDFtoImage/Pdfium |
-| `FileSystemDocumentStorage` | `IDocumentStorage` | Disc local (`App_Data/`) |
-| `FacturaStagingRepository` | `IFacturaStagingRepository` | EF Core + transacció explícita |
-| `DapperConsultaSqlEjecutor` | `IConsultaSqlEjecutor` | Dapper (consultes del Consultor) |
-| `DocFlowDbContext` | — | El `DbContext` d'EF Core |
-| `Persistence/Configurations/*` | — | Mapatge Fluent API de cada entitat a la seva taula |
-| `LlmOptions`, `StorageOptions` | — | Classes d'opcions (bind des de config) |
+| `OpenAiCompatibleLlmClient` | `ILlmClient` | `HttpClient` contra API estilo OpenAI (Groq / LM Studio) |
+| `PdfiumPdfToImageConverter` | `IPdfToImageConverter` | Librería PDFtoImage/Pdfium |
+| `FileSystemDocumentStorage` | `IDocumentStorage` | Disco local (`App_Data/`) |
+| `FacturaStagingRepository` | `IFacturaStagingRepository` | EF Core + transacción explícita |
+| `DapperConsultaSqlEjecutor` | `IConsultaSqlEjecutor` | Dapper (consultas del Consultor) |
+| `DocFlowDbContext` | — | El `DbContext` de EF Core |
+| `Persistence/Configurations/*` | — | Mapeo Fluent API de cada entidad a su tabla |
+| `LlmOptions`, `StorageOptions` | — | Clases de opciones (bind desde config) |
 
-> **Per què EF Core per a la ingesta i Dapper per al Consultor?** EF va bé per escriure objectes amb
-> relacions (factura + línies + incidències en cascada). Dapper va bé per executar SQL arbitrari i
-> materialitzar files dinàmiques — exactament el que fa el Consultor amb el SQL generat pel LLM. El
-> SPEC (§3) ho demana així.
+> **¿Por qué EF Core para la ingesta y Dapper para el Consultor?** EF va bien para escribir objetos con
+> relaciones (factura + líneas + incidencias en cascada). Dapper va bien para ejecutar SQL arbitrario y
+> materializar filas dinámicas — exactamente lo que hace el Consultor con el SQL generado por el LLM. El
+> SPEC (§3) lo pide así.
 
-**Detall de la transacció** a `FacturaStagingRepository.GuardarAsync`: obre una transacció explícita,
-dona d'alta el proveïdor si no existeix, afegeix la factura (amb línies i incidències en cascada), i
-fa commit. Si qualsevol pas peta, **res es guarda** (tot o res).
+**Detalle de la transacción** en `FacturaStagingRepository.GuardarAsync`: abre una transacción explícita,
+da de alta el proveedor si no existe, añade la factura (con líneas e incidencias en cascada), y
+hace commit. Si cualquier paso peta, **nada se guarda** (todo o nada).
 
 ---
 
-## 8. `Api` — la porta d'entrada
+## 8. `Api` — la puerta de entrada
 
-- **`Program.cs`**: arrenca el web, llegeix el paràmetre `--llm`, registra les capes
-  (`AddApplication()` + `AddInfrastructure()`), i és **l'únic lloc on totes les peces es connecten**
-  (on es diu "aquesta interfície → aquesta implementació"). Això es diu **arrel de composició**.
+- **`Program.cs`**: arranca la web, lee el parámetro `--llm`, registra las capas
+  (`AddApplication()` + `AddInfrastructure()`), y es **el único sitio donde todas las piezas se conectan**
+  (donde se dice "esta interfaz → esta implementación"). Esto se llama **raíz de composición**.
 - **`Controllers/`**:
-  - `DocumentosController`: `POST /documentos` (pipeline complet o només ingesta amb `?procesar=false`),
-    `POST /documentos/{id}/extraccion` (extracció sense persistir, per depurar/evaluar).
-  - `FacturasController`: `GET /facturas` (llista amb estats), `GET /facturas/{id}` (detall amb
-    línies i incidències).
-  - `ConsultasController`: `POST /consultas` (pregunta NL → resposta + SQL executat).
+  - `DocumentosController`: `POST /documentos` (pipeline completo o solo ingesta con `?procesar=false`),
+    `POST /documentos/{id}/extraccion` (extracción sin persistir, para depurar/evaluar).
+  - `FacturasController`: `GET /facturas` (lista con estados), `GET /facturas/{id}` (detalle con
+    líneas e incidencias).
+  - `ConsultasController`: `POST /consultas` (pregunta NL → respuesta + SQL ejecutado).
 
-Els controllers són **primets a propòsit**: reben la petició, criden l'agent o orquestador que
-correspongui, i tornen el resultat. No tenen lògica de negoci.
+Los controllers son **finitos a propósito**: reciben la petición, llaman al agente u orquestador que
+corresponda, y devuelven el resultado. No tienen lógica de negocio.
 
 ---
 
-## 9. Com es relacionen les classes (diagrama)
+## 9. Cómo se relacionan las clases (diagrama)
 
 ```mermaid
 graph TD
@@ -418,7 +418,7 @@ graph TD
         PARSER[FacturaExtraidaParser]
     end
 
-    subgraph DOM["💎 Domain (interfícies + regles + model)"]
+    subgraph DOM["💎 Domain (interfaces + reglas + modelo)"]
         ILLM[/ILlmClient/]
         IPDF[/IPdfToImageConverter/]
         ISTORE[/IDocumentStorage/]
@@ -461,17 +461,17 @@ graph TD
     style FE fill:#2d6a4f,color:#fff
 ```
 
-Les línies contínues són "usa"; les puntejades "implementa". Fixa't com **`Application` (els agents)
-sempre apunta a interfícies del `Domain`** (les caixes amb `/barres/`), i és `Infrastructure` qui les
-implementa des de fora. Cap agent coneix una classe concreta d'`Infrastructure`.
+Las líneas continuas son "usa"; las punteadas "implementa". Fíjate cómo **`Application` (los agentes)
+siempre apunta a interfaces del `Domain`** (las cajas con `/barras/`), y es `Infrastructure` quien las
+implementa desde fuera. Ningún agente conoce una clase concreta de `Infrastructure`.
 
 ---
 
-## 10. El flux complet, pas a pas (pujar una factura)
+## 10. El flujo completo, paso a paso (subir una factura)
 
 ```mermaid
 sequenceDiagram
-    actor U as Usuari
+    actor U as Usuario
     participant DC as DocumentosController
     participant ORQ as IngestaOrquestador
     participant ING as IngestaDocumentoService
@@ -480,7 +480,7 @@ sequenceDiagram
     participant EXT as ExtractorAgent
     participant LLM as ILlmClient
     participant VAL as ValidadorAgent
-    participant R as 9x Regles
+    participant R as 9x Reglas
     participant REPO as IFacturaStagingRepository
     participant DB as SQL Server
 
@@ -489,12 +489,12 @@ sequenceDiagram
     ORQ->>ING: IngestarAsync(pdf)
     ING->>PDF: ConvertToPngPages(pdf)
     PDF-->>ING: [PNG...]
-    ING->>ST: GuardarDocumento(pdf, imatges)
-    ST-->>ING: rutes
+    ING->>ST: GuardarDocumento(pdf, imágenes)
+    ST-->>ING: rutas
     ING-->>ORQ: DocumentoIngestado
 
-    ORQ->>EXT: ExtraerAsync(imatges)
-    EXT->>LLM: CompletarAsync(prompt + imatges)
+    ORQ->>EXT: ExtraerAsync(imágenes)
+    EXT->>LLM: CompletarAsync(prompt + imágenes)
     LLM-->>EXT: JSON
     EXT-->>ORQ: FacturaExtraida
 
@@ -502,88 +502,88 @@ sequenceDiagram
     REPO-->>ORQ: true/false
     ORQ->>VAL: Validar(contexto)
     VAL->>R: Validar() ×9
-    R-->>VAL: incidències
-    VAL-->>ORQ: Estat + incidències
+    R-->>VAL: incidencias
+    VAL-->>ORQ: Estado + incidencias
 
-    ORQ->>REPO: GuardarAsync(factura) [TRANSACCIÓ]
-    REPO->>DB: INSERT proveïdor+factura+línies+incidències
+    ORQ->>REPO: GuardarAsync(factura) [TRANSACCIÓN]
+    REPO->>DB: INSERT proveedor+factura+líneas+incidencias
     DB-->>REPO: OK (commit)
     REPO-->>ORQ: facturaId
     ORQ-->>DC: ResultadoIngesta
-    DC-->>U: 201 {estat, incidències}
+    DC-->>U: 201 {estado, incidencias}
 ```
 
-Observa que **el controller mai parla amb el LLM ni amb la BD directament**: només amb l'orquestador.
-I l'orquestador mai coneix Groq ni SQL Server: només interfícies. Aquesta indirecció és precisament
-el que ens deixa canviar de LLM o afegir MAF sense trencar res.
+Observa que **el controller nunca habla con el LLM ni con la BD directamente**: solo con el orquestador.
+Y el orquestador nunca conoce Groq ni SQL Server: solo interfaces. Esta indirección es precisamente
+lo que nos deja cambiar de LLM o añadir MAF sin romper nada.
 
 ---
 
-## 11. Glossari DDD ↔ el que ja coneixes
+## 11. Glosario DDD ↔ lo que ya conoces
 
-| Terme DDD / Clean | Traducció "de N capes" | Al nostre codi |
+| Término DDD / Clean | Traducción "de N capas" | En nuestro código |
 |---|---|---|
-| **Domain** | La BLL, però sense EF a dins | Projecte `Domain` |
-| **Entity** | Una classe que mapeja a taula, amb identitat | `FacturaStaging`, `Proveedor` |
-| **Value Object** | Un tipus que encapsula un concepte + regles | `Nif` |
-| **DTO / Contracte** | Classe de transport de dades | `FacturaExtraida`, `DocumentoIngestado` |
-| **Repository** | El teu DAL, però darrere una interfície del domini | `IFacturaStagingRepository` |
-| **Use Case / Application Service** | El teu Service de la BLL | `IngestaOrquestador`, els agents |
-| **Inversió de dependència** | (nou) La BLL defineix interfícies, la DAL les implementa | `Contracts/` + `Infrastructure/` |
-| **Arrel de composició** | El `Startup`/arrencada on registres tot a la DI | `Program.cs` |
-| **Strategy** | (patró) Una classe per variant en lloc d'un switch | Les 9 `IReglaValidacion` |
-| **Model anèmic** | Classes de només dades (getters/setters) | Les `Entities/` (de moment, i és correcte) |
+| **Domain** | La BLL, pero sin EF dentro | Proyecto `Domain` |
+| **Entity** | Una clase que mapea a tabla, con identidad | `FacturaStaging`, `Proveedor` |
+| **Value Object** | Un tipo que encapsula un concepto + reglas | `Nif` |
+| **DTO / Contrato** | Clase de transporte de datos | `FacturaExtraida`, `DocumentoIngestado` |
+| **Repository** | Tu DAL, pero detrás de una interfaz del dominio | `IFacturaStagingRepository` |
+| **Use Case / Application Service** | Tu Service de la BLL | `IngestaOrquestador`, los agentes |
+| **Inversión de dependencia** | (nuevo) La BLL define interfaces, la DAL las implementa | `Contracts/` + `Infrastructure/` |
+| **Raíz de composición** | El `Startup`/arranque donde registras todo en la DI | `Program.cs` |
+| **Strategy** | (patrón) Una clase por variante en lugar de un switch | Las 9 `IReglaValidacion` |
+| **Modelo anémico** | Clases de solo datos (getters/setters) | Las `Entities/` (de momento, y es correcto) |
 
 ---
 
-## 12. Què ens aporta tot això (resum del "per què")
+## 12. Qué nos aporta todo esto (resumen del "por qué")
 
-1. **Es pot provar sense infraestructura.** Els 133 tests unitaris corren sense base de dades ni LLM
-   reals, perquè la lògica (regles, parsers, orquestador, guard) depèn d'interfícies que substituïm
-   per dobles de prova. En N capes clàssic això és molt més difícil perquè la BLL arrossega la DAL.
+1. **Se puede probar sin infraestructura.** Los 133 tests unitarios corren sin base de datos ni LLM
+   reales, porque la lógica (reglas, parsers, orquestador, guard) depende de interfaces que sustituimos
+   por dobles de prueba. En N capas clásico esto es mucho más difícil porque la BLL arrastra la DAL.
 
-2. **Es pot canviar la tecnologia sense tocar el negoci.** Ho hem demostrat: passar de Groq a un LLM
-   local va ser configuració pura, zero canvis a `Domain`/`Application`. El mateix valdrà per canviar
-   de SQL Server o per introduir Microsoft Agent Framework a l'Etapa 2.
+2. **Se puede cambiar la tecnología sin tocar el negocio.** Lo hemos demostrado: pasar de Groq a un LLM
+   local fue configuración pura, cero cambios en `Domain`/`Application`. Lo mismo valdrá para cambiar
+   de SQL Server o para introducir Microsoft Agent Framework en la Etapa 2.
 
-3. **Cada peça té un únic motiu per canviar.** Una regla de negoci nova → toques `Domain/Validacion`.
-   Un canvi de format de PDF → toques `Infrastructure/Pdf`. Un endpoint nou → toques `Api`. No hi ha
-   el típic fitxer que ho barreja tot i que trenca tres coses cada cop que el toques.
+3. **Cada pieza tiene un único motivo para cambiar.** Una regla de negocio nueva → tocas `Domain/Validacion`.
+   Un cambio de formato de PDF → tocas `Infrastructure/Pdf`. Un endpoint nuevo → tocas `Api`. No existe
+   el típico fichero que lo mezcla todo y que rompe tres cosas cada vez que lo tocas.
 
-4. **El coneixement de negoci està en un sol lloc i és fàcil de trobar.** Les regles fiscals estan a
-   `Domain`, no repartides entre controllers i serveis. Un desenvolupador nou llegeix `Domain` i
-   entén *què* fa el sistema sense perdre's en detalls de HTTP o SQL.
+4. **El conocimiento de negocio está en un solo lugar y es fácil de encontrar.** Las reglas fiscales están en
+   `Domain`, no repartidas entre controllers y servicios. Un desarrollador nuevo lee `Domain` y
+   entiende *qué* hace el sistema sin perderse en detalles de HTTP o SQL.
 
-**El cost honest**: hi ha més projectes i més interfícies que en una app de N capes petita. Per a un
-CRUD trivial seria sobredimensionat. Aquí es justifica perquè el negoci és el valor (extracció +
-validació + consulta segura) i volem poder-lo evolucionar i provar amb confiança durant l'Etapa 2.
+**El coste honesto**: hay más proyectos y más interfaces que en una app de N capas pequeña. Para un
+CRUD trivial sería sobredimensionado. Aquí se justifica porque el negocio es el valor (extracción +
+validación + consulta segura) y queremos poder evolucionarlo y probarlo con confianza durante la Etapa 2.
 
 ---
 
-## 13. Mapa ràpid de fitxers (per anar-hi directe)
+## 13. Mapa rápido de ficheros (para ir directo)
 
 ```
 src/
-├── Domain/                        ← el cor, sense dependències
-│   ├── Contracts/                 ← INTERFÍCIES (ILlmClient, IRepo...) + DTOs (FacturaExtraida)
-│   ├── Entities/                  ← taules EF (FacturaStaging, Proveedor, EstadoFactura...)
+├── Domain/                        ← el corazón, sin dependencias
+│   ├── Contracts/                 ← INTERFACES (ILlmClient, IRepo...) + DTOs (FacturaExtraida)
+│   ├── Entities/                  ← tablas EF (FacturaStaging, Proveedor, EstadoFactura...)
 │   ├── ValueObjects/              ← Nif
-│   ├── Validacion/                ← IReglaValidacion + Reglas/ (les 9 regles)
+│   ├── Validacion/                ← IReglaValidacion + Reglas/ (las 9 reglas)
 │   └── Parsers/                   ← NumeroParser, FechaParser
-├── Application/                   ← casos d'ús, coordina via interfícies
+├── Application/                   ← casos de uso, coordina vía interfaces
 │   ├── Ingesta/                   ← IngestaOrquestador, IngestaDocumentoService
 │   ├── Extraccion/                ← ExtractorAgent, FacturaExtraidaParser
 │   ├── Validacion/                ← ValidadorAgent
 │   ├── Consultor/                 ← ConsultorAgent, SqlGuard
-│   ├── Prompts/                   ← *.md versionats + PromptLoader
+│   ├── Prompts/                   ← *.md versionados + PromptLoader
 │   └── Llm/                       ← LlmRespuesta
-├── Infrastructure/                ← detalls tècnics, implementa les interfícies
+├── Infrastructure/                ← detalles técnicos, implementa las interfaces
 │   ├── Llm/                       ← OpenAiCompatibleLlmClient, LlmOptions
 │   ├── Pdf/                       ← PdfiumPdfToImageConverter
 │   ├── Storage/                   ← FileSystemDocumentStorage
 │   ├── Consultor/                 ← DapperConsultaSqlEjecutor
 │   └── Persistence/               ← DocFlowDbContext, Repository, Configurations/
-└── Api/                           ← la porta REST
-    ├── Program.cs                 ← arrel de composició (registra-ho tot)
+└── Api/                           ← la puerta REST
+    ├── Program.cs                 ← raíz de composición (regístralo todo)
     └── Controllers/               ← Documentos, Facturas, Consultas
 ```

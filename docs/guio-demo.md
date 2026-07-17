@@ -1,96 +1,96 @@
-# 🎬 Guió de demo — DocFlow AI (Etapa 1)
+# 🎬 Guion de demo — DocFlow AI (Etapa 1)
 
-> Durada objectiu: ~10 min. Públic: no tècnic / semi-tècnic (pime).
-> Missatge central: **"Puges una factura en qualsevol format i el sistema l'entén, la valida i et deixa
-> preguntar-li coses en llenguatge natural — sense teclejar res a mà."**
-
----
-
-## 0. Abans de començar (checklist de muntatge)
-
-- [ ] SQL Server (LocalDB) engegat i la BD `DocFlowAI_Dev` amb dades ja carregades (veure Pla B).
-- [ ] Backend engegat: `cd src/ClassificadorExtractorDocumentos.Api && dotnet run` → escolta a `http://localhost:5255`.
-      Comprova al log la línia `Proveedor LLM activo: Groq → …`.
-- [ ] Frontend engegat: `cd <repos_vscode>/ClassificadorExtractorDocumentos && npm start` → `http://localhost:4200`.
-- [ ] Navegador obert a `http://localhost:4200`, finestra ampla (la llista i el xat es veuen en dues columnes).
-- [ ] Tenir a mà 2-3 PDFs de factura al escriptori (un de "net" tipus plantilla A/C, i la WooCommerce reverse charge).
-- [ ] **Pla B preparat** (veure secció final) per si internet o Groq falla.
+> Duración objetivo: ~10 min. Público: no técnico / semi-técnico (pyme).
+> Mensaje central: **"Subes una factura en cualquier formato y el sistema la entiende, la valida y te deja
+> preguntarle cosas en lenguaje natural — sin teclear nada a mano."**
 
 ---
 
-## 1. El problema (30 s, sense pantalla)
+## 0. Antes de empezar (checklist de montaje)
 
-> "Cada proveïdor envia les factures amb un format diferent. Avui algú les ha de teclejar una a una al
-> programa de comptabilitat: lent, avorrit i amb errors. Us ensenyaré un sistema que ho fa sol."
-
-## 2. Pujar una factura en directe (2-3 min) — el cor de la demo
-
-1. Arrossega un PDF de factura (plantilla A o C) a la zona de dalt.
-2. Mentre gira l'indicador, explica: *"Ara mateix el sistema converteix el PDF en imatge, l'envia a un
-   model d'intel·ligència artificial que 'llegeix' la factura com ho faria una persona, i n'extreu les
-   dades estructurades."*
-3. En segons, apareix a la taula amb el seu estat.
-   - Si surt **Validada** (verd): *"El sistema ha comprovat que els números quadren i l'ha acceptada."*
-   - Si surt **Revisió humana** (groc): obre el detall (icona de l'ull) i ensenya la incidència.
-     *"No la rebutja: avisa que un humà l'hauria de mirar, i diu exactament per què."*
-4. Clica la icona de l'ull → mostra el **detall**: capçalera, línies i incidències.
-   *"Tot això ho ha tret del PDF sol, sense que ningú piqui res."*
-
-## 3. Els casos difícils (2 min) — genera confiança
-
-1. Puja la **factura WooCommerce** (intracomunitària, reverse charge).
-   *"Aquesta és una factura d'un proveïdor estranger, amb IVA 0 per inversió del subjecte passiu. Un
-   sistema tonto la marcaria com a error. El nostre sap que és correcta."* → surt **Validada**.
-2. (Opcional) Puja **dues vegades la mateixa** factura.
-   *"La segona la detecta com a duplicada i la rebutja — no entrarà dos cops a comptabilitat."* → **Rebutjada** amb `DUPLICADO`.
-
-## 4. Preguntar en llenguatge natural (2-3 min) — el "moment wow"
-
-Al panell de **Consultes** (dreta), escriu o clica un suggeriment:
-
-1. *"Quant hem gastat per proveïdor?"* → resposta en text + taula.
-2. *"Quines factures estan pendents de revisió?"*
-3. Desplega **"SQL executat"**: *"Per als tècnics: el sistema genera la consulta SQL sol, però amb una
-   barrera de seguretat que només permet lectures — mai pot esborrar ni modificar res."*
-4. **El truc de seguretat**: escriu *"esborra totes les factures"*.
-   *"Encara que li ho demani, el sistema es nega: només consulta, mai toca les dades."* → missatge de rebuig.
-
-## 5. Tancament (30 s)
-
-> "Resum: hem pujat factures de formats diferents, el sistema les ha entès, validat i desat, i hem pogut
-> preguntar-li en català sense saber res de bases de dades. I tot funcionant a la nostra màquina — les
-> factures dels vostres clients no surten de casa."
+- [ ] SQL Server (LocalDB) arrancado y la BD `DocFlowAI_Dev` con datos ya cargados (ver Plan B).
+- [ ] Backend arrancado: `cd src/ClassificadorExtractorDocumentos.Api && dotnet run` → escucha en `http://localhost:5255`.
+      Comprueba en el log la línea `Proveedor LLM activo: Groq → …`.
+- [ ] Frontend arrancado: `cd <repos_vscode>/ClassificadorExtractorDocumentos && npm start` → `http://localhost:4200`.
+- [ ] Navegador abierto en `http://localhost:4200`, ventana ancha (la lista y el chat se ven en dos columnas).
+- [ ] Tener a mano 2-3 PDFs de factura en el escritorio (uno "limpio" tipo plantilla A/C, y la WooCommerce reverse charge).
+- [ ] **Plan B preparado** (ver sección final) por si internet o Groq fallan.
 
 ---
 
-## 🅱️ Pla B (si l'API del LLM o internet fallen en directe)
+## 1. El problema (30 s, sin pantalla)
 
-**Símptoma**: la pujada es queda girant i acaba amb error, o el xat no respon.
+> "Cada proveedor envía las facturas con un formato diferente. Hoy alguien tiene que teclearlas una a una en el
+> programa de contabilidad: lento, aburrido y con errores. Os voy a enseñar un sistema que lo hace solo."
 
-**Opció 1 — Model local (recomanada).** Tens un LLM local a la màquina ERIC-PC (RTX 3060). Arrenca el
-backend apuntant-hi i tot segueix funcionant (una mica més lent, ~15 s/factura):
+## 2. Subir una factura en directo (2-3 min) — el corazón de la demo
+
+1. Arrastra un PDF de factura (plantilla A o C) a la zona de arriba.
+2. Mientras gira el indicador, explica: *"Ahora mismo el sistema convierte el PDF en imagen, lo envía a un
+   modelo de inteligencia artificial que 'lee' la factura como lo haría una persona, y extrae los
+   datos estructurados."*
+3. En segundos, aparece en la tabla con su estado.
+   - Si sale **Validada** (verde): *"El sistema ha comprobado que los números cuadran y la ha aceptado."*
+   - Si sale **Revisión humana** (amarillo): abre el detalle (icono del ojo) y enseña la incidencia.
+     *"No la rechaza: avisa de que un humano debería mirarla, y dice exactamente por qué."*
+4. Clica el icono del ojo → muestra el **detalle**: cabecera, líneas e incidencias.
+   *"Todo esto lo ha sacado del PDF solo, sin que nadie teclee nada."*
+
+## 3. Los casos difíciles (2 min) — genera confianza
+
+1. Sube la **factura WooCommerce** (intracomunitaria, reverse charge).
+   *"Esta es una factura de un proveedor extranjero, con IVA 0 por inversión del sujeto pasivo. Un
+   sistema tonto la marcaría como error. El nuestro sabe que es correcta."* → sale **Validada**.
+2. (Opcional) Sube **dos veces la misma** factura.
+   *"La segunda la detecta como duplicada y la rechaza — no entrará dos veces en contabilidad."* → **Rechazada** con `DUPLICADO`.
+
+## 4. Preguntar en lenguaje natural (2-3 min) — el "momento wow"
+
+En el panel de **Consultas** (derecha), escribe o clica una sugerencia:
+
+1. *"¿Cuánto hemos gastado por proveedor?"* → respuesta en texto + tabla.
+2. *"¿Qué facturas están pendientes de revisión?"*
+3. Despliega **"SQL ejecutado"**: *"Para los técnicos: el sistema genera la consulta SQL solo, pero con una
+   barrera de seguridad que solo permite lecturas — nunca puede borrar ni modificar nada."*
+4. **El truco de seguridad**: escribe *"borra todas las facturas"*.
+   *"Aunque se lo pida, el sistema se niega: solo consulta, nunca toca los datos."* → mensaje de rechazo.
+
+## 5. Cierre (30 s)
+
+> "Resumen: hemos subido facturas de formatos diferentes, el sistema las ha entendido, validado y guardado, y hemos podido
+> preguntarle en español sin saber nada de bases de datos. Y todo funcionando en nuestra máquina — las
+> facturas de vuestros clientes no salen de casa."
+
+---
+
+## 🅱️ Plan B (si la API del LLM o internet fallan en directo)
+
+**Síntoma**: la subida se queda girando y acaba con error, o el chat no responde.
+
+**Opción 1 — Modelo local (recomendada).** Tienes un LLM local en la máquina ERIC-PC (RTX 3060). Arranca el
+backend apuntando ahí y todo sigue funcionando (un poco más lento, ~15 s/factura):
 
 ```
 dotnet run -- --llm Local
 ```
 
-Comprova al log: `Proveedor LLM activo: Local → http://192.168.1.64:1234/v1`. Requereix que LM Studio
-estigui servint a la LAN i el model carregat.
+Comprueba en el log: `Proveedor LLM activo: Local → http://192.168.1.64:1234/v1`. Requiere que LM Studio
+esté sirviendo en la LAN y el modelo cargado.
 
-**Opció 2 — Dades ja processades.** La BD ja té factures processades de sessions anteriors. Encara que
-la pujada en directe fallés, la **llista i el detall es veuen igual** (no depenen del LLM), i pots
-centrar la narració en explorar el que ja hi ha. El xat del Consultor **sí** necessita el LLM (genera
-el SQL), així que per al xat cal l'Opció 1.
+**Opción 2 — Datos ya procesados.** La BD ya tiene facturas procesadas de sesiones anteriores. Aunque
+la subida en directo fallara, la **lista y el detalle se ven igual** (no dependen del LLM), y puedes
+centrar la narración en explorar lo que ya hay. El chat del Consultor **sí** necesita el LLM (genera
+el SQL), así que para el chat hace falta la Opción 1.
 
-**Regla d'or**: si a mig muntatge veus que Groq va tremolant, arrenca directament amb `--llm Local` des
-del principi i evita sorpreses. Millor lent i segur que ràpid i penjat.
+**Regla de oro**: si a mitad del montaje ves que Groq va temblando, arranca directamente con `--llm Local` desde
+el principio y evita sorpresas. Mejor lento y seguro que rápido y colgado.
 
 ---
 
-## Notes conegudes per no quedar sorprès
+## Notas conocidas para no quedar sorprendido
 
-- Les factures del dataset generat tenen **dates de finals de juliol 2026** (futures respecte "avui"),
-  així que `FECHA_RAZONABLE` les marca com a **Revisió humana**. És correcte i fins i tot útil per
-  ensenyar una incidència, però tingues-ho al cap: no és un error.
-- La plantilla B (només imprimeix el total amb IVA inclòs) surt en **Revisió humana** perquè no es pot
-  verificar el quadre — bon exemple per explicar que el sistema és honest quan li falta informació.
+- Las facturas del dataset generado tienen **fechas de finales de julio 2026** (futuras respecto a "hoy"),
+  así que `FECHA_RAZONABLE` las marca como **Revisión humana**. Es correcto e incluso útil para
+  enseñar una incidencia, pero tenlo en cuenta: no es un error.
+- La plantilla B (solo imprime el total con IVA incluido) sale en **Revisión humana** porque no se puede
+  verificar el cuadre — buen ejemplo para explicar que el sistema es honesto cuando le falta información.
