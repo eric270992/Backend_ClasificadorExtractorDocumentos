@@ -19,11 +19,24 @@ Si solo quieres **usar** la aplicación, **no hace falta descargar el código**.
 
 1. Instala **[Docker](https://www.docker.com/products/docker-desktop/)**.
 2. Descarga el fichero **[`docker-compose.deploy.yml`](docker-compose.deploy.yml)** de este repositorio.
-3. A su lado, crea un fichero **`.env`** con tu clave de Groq (gratuita en
-   [console.groq.com](https://console.groq.com)):
+3. A su lado, crea un fichero **`.env`**. Un **único bloque** con todos los campos; según el proveedor LLM
+   que elijas, rellenas unos u otros (los comentarios explican cuáles):
    ```env
-   GROQ_API_KEY=gsk_tu_clave
+   # Contraseña de SQL Server (obligatoria). Complejidad: mayúsculas, minúsculas, número y símbolo.
    MSSQL_SA_PASSWORD=UnaClaveFuerte123!
+
+   # Proveedor del LLM: "Groq" (nube, por defecto) o "Local" (LM Studio / Ollama).
+   LLM_PROVIDER=Groq
+
+   # Solo si LLM_PROVIDER=Groq: tu clave (gratis en https://console.groq.com).
+   # Si usas el LLM local, deja esta línea vacía o bórrala.
+   GROQ_API_KEY=gsk_tu_clave
+
+   # Solo si LLM_PROVIDER=Local: dónde escucha tu servidor LLM y qué modelo cargar.
+   # host.docker.internal = el mismo PC que Docker. Si el LLM está en otra máquina de la red,
+   # pon su IP, p. ej. http://192.168.1.64:1234/v1
+   LLM_LOCAL_BASEURL=http://host.docker.internal:1234/v1
+   LLM_LOCAL_MODEL=qwen/qwen2.5-vl-7b
    ```
 4. Levántalo:
    ```bash
@@ -35,20 +48,16 @@ Si solo quieres **usar** la aplicación, **no hace falta descargar el código**.
 Docker se descarga las imágenes (`ghcr.io/eric270992/docflow-ai-api` y `…-web`), arranca SQL Server, crea
 la base de datos sola y sirve el frontend. Para pararlo: `docker compose -f docker-compose.deploy.yml down`.
 
-### Usar un LLM local (LM Studio / Ollama) en lugar de Groq
+### Groq (nube) o LLM local (LM Studio / Ollama)
 
-Si no quieres depender de Groq, puedes apuntar a un servidor LLM local. En el `.env`:
-```env
-LLM_PROVIDER=Local
-LLM_LOCAL_BASEURL=http://host.docker.internal:1234/v1   # si corre en el mismo PC que Docker
-# LLM_LOCAL_BASEURL=http://192.168.1.64:1234/v1          # si corre en otra máquina de la red
-LLM_LOCAL_MODEL=qwen/qwen2.5-vl-7b
-```
-Con `LLM_PROVIDER=Local` no hace falta `GROQ_API_KEY`. Nota: en LM Studio hay que activar **"Serve on Local Network"**
-(que escuche en `0.0.0.0`), o el contenedor no llegará hasta él.
+El proveedor se elige con `LLM_PROVIDER` en el **mismo `.env` de arriba** (un solo fichero, un solo bloque):
 
-> Con `LLM_PROVIDER=Groq` (por defecto) necesitas una clave de Groq para que la extracción y las consultas
-> funcionen. Guía completa (build desde el código, despliegue, publicación de imágenes):
+- **`LLM_PROVIDER=Groq`** (por defecto): rellena `GROQ_API_KEY`. Es lo más rápido para probar.
+- **`LLM_PROVIDER=Local`**: apunta `LLM_LOCAL_BASEURL` / `LLM_LOCAL_MODEL` a tu servidor y **deja
+  `GROQ_API_KEY` vacía**. En LM Studio hay que activar **"Serve on Local Network"** (que escuche en
+  `0.0.0.0`), o el contenedor no llegará hasta él.
+
+> Guía completa (build desde el código, despliegue, publicación de imágenes):
 > **[docs/installation-guide.md](docs/installation-guide.md)** §10.
 
 ---

@@ -9,6 +9,8 @@ on:
       - '**.md'
       - 'docs/**'
       - '.gitignore'
+      - 'docker-compose*.yml'   # el compose no forma parte de la imagen
+      - '.env.example'
   workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña Actions
 
 permissions:

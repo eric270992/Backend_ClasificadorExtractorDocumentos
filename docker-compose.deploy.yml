@@ -30,7 +30,8 @@ services:
       Database__MigrateOnStartup: "true"
       # Proveedor LLM: "Groq" (nube, por defecto) o "Local" (LM Studio/Ollama). Se elige en el .env.
       Llm__Proveedor: "${LLM_PROVIDER:-Groq}"
-      Llm__Perfiles__Groq__ApiKey: "${GROQ_API_KEY}"
+      # Vacía por defecto: si usas el LLM local no necesitas clave de Groq (no da aviso al arrancar).
+      Llm__Perfiles__Groq__ApiKey: "${GROQ_API_KEY:-}"
       # Para Local: URL del servidor. Si corre en el mismo PC que Docker, usa host.docker.internal.
       Llm__Perfiles__Local__BaseUrl: "${LLM_LOCAL_BASEURL:-http://host.docker.internal:1234/v1}"
       Llm__Perfiles__Local__Model: "${LLM_LOCAL_MODEL:-qwen/qwen2.5-vl-7b}"
