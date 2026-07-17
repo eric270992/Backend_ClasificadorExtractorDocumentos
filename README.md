@@ -35,8 +35,21 @@ Si només vols **fer servir** l'aplicació, **no cal descarregar el codi**. Amb 
 Docker es baixa les imatges (`ghcr.io/eric270992/docflow-ai-api` i `…-web`), arrenca SQL Server, crea
 la base de dades sola i serveix el frontend. Per aturar-ho: `docker compose -f docker-compose.deploy.yml down`.
 
-> Necessites una clau de Groq perquè l'extracció i les consultes funcionin. Guia completa
-> (build des del codi, desplegament, publicació d'imatges): **[docs/installation-guide.md](docs/installation-guide.md)** §10.
+### Usar un LLM local (LM Studio / Ollama) en lloc de Groq
+
+Si no vols dependre de Groq, pots apuntar a un servidor LLM local. Al `.env`:
+```env
+LLM_PROVIDER=Local
+LLM_LOCAL_BASEURL=http://host.docker.internal:1234/v1   # si corre al mateix PC que Docker
+# LLM_LOCAL_BASEURL=http://192.168.1.64:1234/v1          # si corre en una altra màquina de la xarxa
+LLM_LOCAL_MODEL=qwen/qwen2.5-vl-7b
+```
+Amb `LLM_PROVIDER=Local` no cal `GROQ_API_KEY`. Nota: a LM Studio cal activar **"Serve on Local Network"**
+(que escolti a `0.0.0.0`), o el contenidor no hi arribarà.
+
+> Amb `LLM_PROVIDER=Groq` (per defecte) necessites una clau de Groq perquè l'extracció i les consultes
+> funcionin. Guia completa (build des del codi, desplegament, publicació d'imatges):
+> **[docs/installation-guide.md](docs/installation-guide.md)** §10.
 
 ---
 

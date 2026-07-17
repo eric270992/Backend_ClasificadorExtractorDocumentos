@@ -306,6 +306,23 @@ docker compose -f docker-compose.deploy.yml up -d
 Docker descarga las imágenes (`ghcr.io/eric270992/docflow-ai-api` y `...-web`) y las levanta. Abre
 http://localhost:8080. (Requiere que las imágenes estén publicadas y sean públicas — ver 10.3.)
 
+#### Elegir el proveedor LLM en Docker (Groq o local)
+
+Por defecto el compose usa **Groq** (nube). Para usar un **LLM local** (LM Studio / Ollama), añade al `.env`:
+
+```env
+LLM_PROVIDER=Local
+LLM_LOCAL_BASEURL=http://host.docker.internal:1234/v1   # si corre en el MISMO PC que Docker
+# LLM_LOCAL_BASEURL=http://192.168.1.64:1234/v1          # si corre en otra máquina de la red
+LLM_LOCAL_MODEL=qwen/qwen2.5-vl-7b
+```
+
+- Con `LLM_PROVIDER=Local` no hace falta `GROQ_API_KEY`.
+- Dentro del contenedor, `localhost` es el propio contenedor: para alcanzar un LM Studio del **host** se
+  usa `host.docker.internal` (el compose ya añade `extra_hosts` para que funcione también en Linux).
+- En LM Studio hay que activar **"Serve on Local Network"** (escuchar en `0.0.0.0`) o el contenedor no
+  llegará. Aplica a ambos compose (`docker-compose.yml` y `docker-compose.deploy.yml`).
+
 ### 10.2 Con el código — build local (desarrolladores)
 
 El `docker-compose.yml` construye las imágenes desde el código. Asume que **los dos repos están
