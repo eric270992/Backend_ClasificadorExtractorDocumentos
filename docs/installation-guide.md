@@ -77,9 +77,10 @@ cd ../..
 **No hay que hacer nada**: al arrancar en desarrollo, la API **crea la base de datos y aplica las
 migraciones automáticamente**. Solo necesitas tener SQL Server LocalDB instalado.
 
-- Si usas **otra base de datos** (no LocalDB), cambia la cadena `ConnectionStrings:DocFlowDb` en
-  `appsettings.json` (o mejor, sobreescríbela con una variable de entorno / user-secret para no tocar
-  el repo).
+- La BD se elige con `Database:Proveedor`: en desarrollo es **`LocalDb`** (cadena `ConnectionStrings:LocalDb`
+  de `appsettings.json`). Para usar un **SQL Server** de verdad, añade su cadena en `ConnectionStrings:SqlServer`
+  y pon `Database:Proveedor = SqlServer` (o arranca con `dotnet run -- --db SqlServer`). En despliegue esto
+  va en `appsettings.Production.json` (ver §9).
 - Si prefieres aplicar las migraciones **a mano** (opcional): 
   `dotnet ef database update --project src/ClassificadorExtractorDocumentos.Infrastructure --startup-project src/ClassificadorExtractorDocumentos.Api`
 
@@ -168,7 +169,7 @@ También puedes usar la API directamente:
 | Síntoma | Causa probable | Solución |
 |---|---|---|
 | "Cannot connect / open database" | LocalDB no instalado o instancia no arrancada | Instala SQL Server LocalDB; prueba `sqllocaldb start MSSQLLocalDB` |
-| "A network-related error..." al conectar | La cadena de `appsettings.json` no encaja con tu SQL Server | Ajusta `ConnectionStrings:DocFlowDb` a tu servidor |
+| "A network-related error..." al conectar | La cadena activa no encaja con tu SQL Server | Ajusta la cadena del proveedor activo (`ConnectionStrings:LocalDb` o `:SqlServer` según `Database:Proveedor`) |
 | `dotnet ef` no se reconoce (solo si migras a mano) | Falta la herramienta | `dotnet tool install --global dotnet-ef` |
 | La subida da error 401/403 del LLM | Clave de Groq ausente o inválida | Revisa `Llm:Perfiles:Groq:ApiKey` (paso 3.3) |
 | La subida da error 429 del LLM | Límite de peticiones del plan gratuito de Groq | Espera unos segundos o usa `--llm Local` |
@@ -222,7 +223,9 @@ En la carpeta `publish/` (junto a `ClassificadorExtractorDocumentos.Api.dll`):
 
 1. Copia `appsettings.Production.example.json` a **`appsettings.Production.json`**.
 2. Rellena los valores reales:
-   - `ConnectionStrings:DocFlowDb` → la BD de producción (con usuario y contraseña si usa login SQL).
+   - `Database:Proveedor` → `SqlServer` (ya viene así en el example) y `ConnectionStrings:SqlServer` → la
+     cadena de la BD de producción (con usuario y contraseña si usa login SQL). Para usar LocalDB en el
+     destino, deja `Database:Proveedor` en `LocalDb`.
    - `Llm:Perfiles:Groq:ApiKey` → la clave de Groq (o cambia `Llm:Proveedor` a `Local`).
 
 > `appsettings.Production.json` está en `.gitignore`: nunca se sube al repositorio.
@@ -250,7 +253,8 @@ En lugar de (o además de) `appsettings.Production.json`, puedes inyectar los se
 entorno. El `:` de la configuración se escribe con doble guion bajo `__`:
 
 ```bash
-ConnectionStrings__DocFlowDb="Server=...;User Id=app;Password=..."
+Database__Proveedor="SqlServer"
+ConnectionStrings__SqlServer="Server=...;User Id=app;Password=..."
 Llm__Perfiles__Groq__ApiKey="gsk_..."
 ```
 

@@ -15,6 +15,7 @@ namespace ClassificadorExtractorDocumentos
             builder.Configuration.AddCommandLine(args, new Dictionary<string, string>
             {
                 ["--llm"] = "Llm:Proveedor",
+                ["--db"] = "Database:Proveedor",
             });
 
             // Add services to the container.
@@ -41,6 +42,8 @@ namespace ClassificadorExtractorDocumentos
                 app.Configuration["Llm:Proveedor"] ?? "Groq",
                 app.Configuration[$"Llm:Perfiles:{app.Configuration["Llm:Proveedor"] ?? "Groq"}:BaseUrl"],
                 app.Configuration[$"Llm:Perfiles:{app.Configuration["Llm:Proveedor"] ?? "Groq"}:Model"]);
+
+            app.Logger.LogInformation("Base de datos activa: {Proveedor}", app.Configuration["Database:Proveedor"] ?? "LocalDb");
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

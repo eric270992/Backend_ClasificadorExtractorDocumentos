@@ -14,8 +14,15 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<DocFlowDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DocFlowDb")));
+        // Selección de base de datos por nombre (mismo patrón que el proveedor LLM). "LocalDb" (dev,
+        // por defecto) o "SqlServer" (despliegue). Se elige con Database:Proveedor — vía appsettings,
+        // variable de entorno Database__Proveedor o argumento --db. La cadena se lee de ConnectionStrings:{nombre}.
+        var proveedorBd = configuration["Database:Proveedor"] ?? "LocalDb";
+        var connectionString = configuration.GetConnectionString(proveedorBd)
+            ?? throw new InvalidOperationException(
+                $"No hay ninguna cadena de conexión '{proveedorBd}' en ConnectionStrings (revisa Database:Proveedor).");
+
+        services.AddDbContext<DocFlowDbContext>(options => options.UseSqlServer(connectionString));
 
         services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
 
@@ -36,9 +43,7 @@ public static class DependencyInjection
         services.AddSingleton<IDocumentStorage, FileSystemDocumentStorage>();
         services.AddScoped<IFacturaStagingRepository, FacturaStagingRepository>();
         services.AddScoped<IFacturaConsultaService, FacturaConsultaService>();
-        services.AddScoped<IConsultaSqlEjecutor>(_ => new DapperConsultaSqlEjecutor(
-            configuration.GetConnectionString("DocFlowDb")
-                ?? throw new InvalidOperationException("Falta la cadena de conexión 'DocFlowDb'.")));
+        services.AddScoped<IConsultaSqlEjecutor>(_ => new DapperConsultaSqlEjecutor(connectionString));
 
         services.AddHttpClient<ILlmClient, OpenAiCompatibleLlmClient>(client =>
         {
