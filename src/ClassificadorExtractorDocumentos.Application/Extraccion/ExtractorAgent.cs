@@ -10,6 +10,8 @@ namespace ClassificadorExtractorDocumentos.Application.Extraccion;
 /// </summary>
 public class ExtractorAgent(ILlmClient llmClient)
 {
+    /// <summary>Valor de <c>FacturasStaging.NivelExtraccion</c> para extracción genérica (proveedor nuevo/
+    /// desconocido, sin ejemplos few-shot). El nivel 2 (few-shot, proveedor ya conocido) llega en Etapa 2.</summary>
     public const byte NivelExtraccionGenerica = 3;
 
     /// <summary>Groq/Llama 4 Scout admite máximo 5 imágenes por petición. Los datos de una factura
