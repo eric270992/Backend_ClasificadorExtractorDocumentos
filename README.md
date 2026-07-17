@@ -12,6 +12,34 @@ tecleixen a mà al seu ERP.
 
 ---
 
+## 🚀 Provar-ho en 1 minut (Docker, sense codi)
+
+Si només vols **fer servir** l'aplicació, **no cal descarregar el codi**. Amb Docker s'aixeca tot
+(base de dades + API + frontend) a partir d'imatges ja publicades.
+
+1. Instal·la **[Docker](https://www.docker.com/products/docker-desktop/)**.
+2. Descarrega el fitxer **[`docker-compose.deploy.yml`](docker-compose.deploy.yml)** d'aquest repositori.
+3. Al seu costat, crea un fitxer **`.env`** amb la teva clau de Groq (gratuïta a
+   [console.groq.com](https://console.groq.com)):
+   ```env
+   GROQ_API_KEY=gsk_la_teva_clau
+   MSSQL_SA_PASSWORD=UnaClauForta123!
+   ```
+4. Aixeca-ho:
+   ```bash
+   docker compose -f docker-compose.deploy.yml up -d
+   ```
+5. Obre **http://localhost:8080** al navegador → ja pots **pujar factures** (PDF/JPEG/PNG) i **fer
+   consultes en llenguatge natural**.
+
+Docker es baixa les imatges (`ghcr.io/eric270992/docflow-ai-api` i `…-web`), arrenca SQL Server, crea
+la base de dades sola i serveix el frontend. Per aturar-ho: `docker compose -f docker-compose.deploy.yml down`.
+
+> Necessites una clau de Groq perquè l'extracció i les consultes funcionin. Guia completa
+> (build des del codi, desplegament, publicació d'imatges): **[docs/installation-guide.md](docs/installation-guide.md)** §10.
+
+---
+
 ## ✨ Què fa
 
 1. **Ingesta** un PDF (el converteix a imatges, una per pàgina).
