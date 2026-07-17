@@ -184,14 +184,12 @@ Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 133 tests), **integraci�
 | Documento | Contenido |
 |---|---|
 | [`docs/installation-guide.md`](docs/installation-guide.md) | **Guía de instalación y uso** (montar en un PC nuevo, paso a paso) |
-| [`docs/SPEC.md`](docs/SPEC.md) | Especificación completa (fuente de verdad, SDD) |
 | [`docs/de-n-capas-a-clean-architecture.md`](docs/de-n-capas-a-clean-architecture.md) | **Resumen rápido**: tu vocabulario IDAO/DAO/IService → ficheros reales |
 | [`docs/arquitectura.md`](docs/arquitectura.md) | Guía de arquitectura con diagramas (para no expertos en DDD) |
 | [`docs/guio-demo.md`](docs/guio-demo.md) | Guion de demo de 10 min + plan B |
 | [`docs/comparativa-llm-local.md`](docs/comparativa-llm-local.md) | Groq vs LLM local: precisión, velocidad, coste |
-| [`docs/resultados-e1-f2.md`](docs/resultados-e1-f2.md) | Resultados de extracción sobre el dataset |
 
 ---
 
-> Proyecto desarrollado con metodología **Spec-Driven Development (SDD)**: `docs/SPEC.md` es la fuente de
-> verdad; el código implementa contra la especificación.
+> Proyecto desarrollado con metodología **Spec-Driven Development (SDD)**: una especificación completa
+> guía el desarrollo; el código implementa contra ella.
