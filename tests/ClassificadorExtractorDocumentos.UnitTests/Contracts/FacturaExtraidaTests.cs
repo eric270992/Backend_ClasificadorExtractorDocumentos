@@ -64,6 +64,42 @@ public class FacturaExtraidaTests
     }
 
     [Fact]
+    public void BaseImponibleEfectiva_usa_la_del_documento_si_existe()
+    {
+        var factura = FacturaDePrueba.Valida(); // Totales con base 250 impresa
+        Assert.Equal(250m, factura.BaseImponibleEfectiva());
+    }
+
+    [Fact]
+    public void BaseYCuotaEfectivas_se_deducen_de_lineas_cuando_el_documento_no_las_trae()
+    {
+        // Plantilla B: líneas con IVA incluido al 21%, el documento no imprime base/cuota.
+        // 121 con IVA incluido → base 100, cuota 21
+        var factura = FacturaDePrueba.Valida() with
+        {
+            LineasIncluyenIva = true,
+            Lineas = [new LineaExtraida("A", 1, 121m, 21m, 121m)],
+            Totales = new TotalesExtraidos(null, null, null, 121m),
+        };
+
+        Assert.Equal(100m, Math.Round(factura.BaseImponibleEfectiva()!.Value, 2));
+        Assert.Equal(21m, Math.Round(factura.CuotaIvaEfectiva()!.Value, 2));
+    }
+
+    [Fact]
+    public void BaseYCuotaEfectivas_son_null_sin_totales_ni_lineas()
+    {
+        var factura = FacturaDePrueba.Valida() with
+        {
+            Lineas = [],
+            Totales = new TotalesExtraidos(null, null, null, 100m),
+        };
+
+        Assert.Null(factura.BaseImponibleEfectiva());
+        Assert.Null(factura.CuotaIvaEfectiva());
+    }
+
+    [Fact]
     public void CuotaIvaEsperadaPorTipoGlobal_usa_la_base_si_existe()
     {
         // base 250 × 21% = 52,5
