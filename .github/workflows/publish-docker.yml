@@ -1,0 +1,43 @@
+name: Publicar imagen Docker (API) en GHCR
+
+# Construye y publica la imagen de la API en GitHub Container Registry.
+# Usa el GITHUB_TOKEN integrado (no hace falta ningún token personal).
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña Actions
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login en GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Metadatos (tags/labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/docflow-ai-api
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build y push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
