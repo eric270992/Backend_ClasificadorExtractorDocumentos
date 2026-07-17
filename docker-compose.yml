@@ -1,0 +1,58 @@
+name: docflow-ai
+
+# Levanta todo el sistema en local: SQL Server + backend (.NET) + frontend (Angular/nginx).
+# Uso:
+#   1) copia .env.example a .env y rellena GROQ_API_KEY (y FRONTEND_PATH si hace falta)
+#   2) docker compose up --build
+#   3) abre http://localhost:8080
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-DocFlow_Dev123!}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - docflow-db:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  api:
+    image: ghcr.io/eric270992/docflow-ai-api:latest
+    build:
+      context: .
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      Database__Proveedor: "SqlServer"
+      ConnectionStrings__SqlServer: "Server=db,1433;Database=DocFlowAI;User Id=sa;Password=${MSSQL_SA_PASSWORD:-DocFlow_Dev123!};TrustServerCertificate=True;"
+      Database__MigrateOnStartup: "true"
+      Llm__Proveedor: "Groq"
+      Llm__Perfiles__Groq__ApiKey: "${GROQ_API_KEY}"
+      Storage__BasePath: "/data/documentos"
+    ports:
+      - "5255:8080"
+    volumes:
+      - docflow-files:/data/documentos
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/eric270992/docflow-ai-web:latest
+    build:
+      # Repo del frontend. Por defecto asume que está clonado como hermano del backend.
+      # En local puedes apuntar a tu ruta con FRONTEND_PATH en el .env.
+      context: ${FRONTEND_PATH:-../Frontend_ClasificadorExtractorDocumentos}
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  docflow-db:
+  docflow-files:

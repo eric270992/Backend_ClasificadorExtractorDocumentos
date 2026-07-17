@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+publish/
+**/App_Data/
+.git/
+.vs/
+.env
+appsettings.Production.json
+node_modules/

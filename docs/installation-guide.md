@@ -270,3 +270,77 @@ npm run build   # genera dist/  (build de producción)
 
 Sirve el contenido de `dist/` con cualquier servidor estático (nginx, IIS...) y apunta sus llamadas
 `/api` al backend publicado (equivalente al proxy de desarrollo).
+
+---
+
+## 10. Ejecutar con Docker (SQL Server + backend + frontend)
+
+Con **Docker** puedes levantar todo el sistema con un comando, sin instalar .NET, Node ni SQL Server.
+Hay **dos formas** según si tienes el código o no:
+
+| | 10.1 Sin el código (imágenes ya publicadas) | 10.2 Con el código (build local) |
+|---|---|---|
+| Para quién | Quien solo quiere **ejecutarlo** | Desarrolladores |
+| Qué descarga | Solo `docker-compose.deploy.yml` + crea `.env` | Los dos repos (backend + frontend) |
+| Comando | `docker compose -f docker-compose.deploy.yml up -d` | `docker compose up --build` |
+| Quién compila | Nadie (se descargan las imágenes) | Tu máquina |
+
+En ambos casos, al terminar:
+- **Frontend**: http://localhost:8080  ·  **API**: http://localhost:5255  ·  **SQL Server**: localhost:1433
+- `db`, `api` y `web` con **volúmenes persistentes** (la BD y las imágenes sobreviven a reinicios), la
+  BD **se crea/migra sola**, y nginx sirve el Angular y hace de **proxy `/api`** al backend (sin CORS).
+
+### 10.1 Sin el código — imágenes precompiladas (recomendado para usar)
+
+No necesitas clonar nada. Solo Docker, el fichero `docker-compose.deploy.yml` y un `.env`:
+
+```bash
+# 1) descarga docker-compose.deploy.yml (del repo o donde lo compartamos)
+# 2) crea un .env al lado con:
+#      GROQ_API_KEY=gsk_tu_clave
+#      MSSQL_SA_PASSWORD=UnaClaveFuerte123!
+# 3) arranca:
+docker compose -f docker-compose.deploy.yml up -d
+```
+
+Docker descarga las imágenes (`ghcr.io/eric270992/docflow-ai-api` y `...-web`) y las levanta. Abre
+http://localhost:8080. (Requiere que las imágenes estén publicadas y sean públicas — ver 10.3.)
+
+### 10.2 Con el código — build local (desarrolladores)
+
+El `docker-compose.yml` construye las imágenes desde el código. Asume que **los dos repos están
+clonados como hermanos** (si no, indica la ruta del frontend con `FRONTEND_PATH` en el `.env`):
+
+```
+carpeta/
+├── Backend_ClasificadorExtractorDocumentos/   ← aquí está docker-compose.yml
+└── Frontend_ClasificadorExtractorDocumentos/
+```
+
+```bash
+cp .env.example .env      # rellena GROQ_API_KEY (y FRONTEND_PATH si hace falta)
+docker compose up --build
+```
+
+Para parar y borrar todo (incluidos los datos): `docker compose down -v`.
+
+### 10.3 Publicar las imágenes (para el mantenedor)
+
+Para habilitar la opción 10.1 hay que publicar las imágenes una vez (y en cada cambio). Usamos GitHub
+Container Registry (gratis):
+
+```bash
+# 1) autenticarse (con un Personal Access Token con permiso write:packages)
+echo $TOKEN | docker login ghcr.io -u eric270992 --password-stdin
+# 2) construir con los nombres de imagen (el docker-compose.yml ya los define) y publicar
+docker compose build
+docker compose push
+```
+
+Después, en GitHub → Packages, marca los paquetes `docflow-ai-api` y `docflow-ai-web` como **públicos**
+para que cualquiera pueda hacer `pull` sin autenticarse. (Si se dejan privados, quien los use debe hacer
+`docker login ghcr.io` antes.)
+
+> Los secretos (clave de Groq, contraseña del SA) van siempre en el `.env`, nunca en el repositorio ni
+> dentro de las imágenes.
+

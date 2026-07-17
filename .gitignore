@@ -14,6 +14,9 @@ dist/
 ## Artefacto de publicación (se genera con dotnet publish)
 publish/
 
+## Variables de entorno de Docker Compose (contienen la clave de Groq, contraseñas...)
+.env
+
 ## Secretos por entorno (NO versionar). Contienen cadenas de conexión reales, claves de API...
 ## La plantilla de qué configurar sí se versiona: appsettings.Production.example.json
 appsettings.Production.json
