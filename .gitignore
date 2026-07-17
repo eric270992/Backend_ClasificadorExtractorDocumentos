@@ -10,3 +10,11 @@ obj/
 ## Angular (E1-F5)
 node_modules/
 dist/
+
+## Artefacto de publicación (se genera con dotnet publish)
+publish/
+
+## Secretos por entorno (NO versionar). Contienen cadenas de conexión reales, claves de API...
+## La plantilla de qué configurar sí se versiona: appsettings.Production.example.json
+appsettings.Production.json
+appsettings.*.Local.json
