@@ -28,9 +28,15 @@ services:
       Database__Proveedor: "SqlServer"
       ConnectionStrings__SqlServer: "Server=db,1433;Database=DocFlowAI;User Id=sa;Password=${MSSQL_SA_PASSWORD:-DocFlow_Dev123!};TrustServerCertificate=True;"
       Database__MigrateOnStartup: "true"
-      Llm__Proveedor: "Groq"
+      # Proveedor LLM: "Groq" (nube, por defecto) o "Local" (LM Studio/Ollama). Se elige en el .env.
+      Llm__Proveedor: "${LLM_PROVIDER:-Groq}"
       Llm__Perfiles__Groq__ApiKey: "${GROQ_API_KEY}"
+      # Para Local: URL del servidor. Si corre en el mismo PC que Docker, usa host.docker.internal.
+      Llm__Perfiles__Local__BaseUrl: "${LLM_LOCAL_BASEURL:-http://host.docker.internal:1234/v1}"
+      Llm__Perfiles__Local__Model: "${LLM_LOCAL_MODEL:-qwen/qwen2.5-vl-7b}"
       Storage__BasePath: "/data/documentos"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # permite alcanzar un LLM local en el host (Linux)
     ports:
       - "5255:8080"
     volumes:

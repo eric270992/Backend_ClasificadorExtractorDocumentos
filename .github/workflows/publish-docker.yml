@@ -5,6 +5,10 @@ name: Publicar imagen Docker (API) en GHCR
 on:
   push:
     branches: [master]
+    paths-ignore:         # los cambios solo de documentación no reconstruyen la imagen
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
   workflow_dispatch: {}   # permite lanzarlo a mano desde la pestaña Actions
 
 permissions:
