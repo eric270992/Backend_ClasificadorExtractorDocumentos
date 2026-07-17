@@ -27,8 +27,9 @@ public static class FacturaStagingMapper
             FechaFactura = ParsearFecha(f.Factura.Fecha) ?? DateOnly.FromDateTime(fechaIngesta),
             FechaVencimiento = ParsearFecha(f.Factura.Vencimiento),
             Moneda = f.Factura.Moneda.Length == 3 ? f.Factura.Moneda : "EUR",
-            BaseImponible = f.Totales.BaseImponible ?? 0m,
-            CuotaIva = f.Totales.CuotaIva ?? 0m,
+            // Totales efectivos: si el documento no los imprime, se deducen de las líneas (importe + %IVA)
+            BaseImponible = f.BaseImponibleEfectiva() ?? 0m,
+            CuotaIva = f.CuotaIvaEfectiva() ?? 0m,
             RetencionIrpf = f.Totales.RetencionIrpf,
             Total = f.Totales.Total ?? 0m,
             ReverseCharge = f.Metadatos.ReverseCharge,

@@ -80,10 +80,49 @@ public class ReglaCuadreTotalTests
     }
 
     [Fact]
-    public void Base_no_impresa_en_documento_pide_revision()
+    public void Plantilla_b_cuadra_deduciendo_base_y_cuota_de_las_lineas()
     {
-        // Caso plantilla B: solo se imprime el total con IVA incluido
-        var factura = Valida() with { Totales = new TotalesExtraidos(null, null, null, 302.5m) };
+        // Caso plantilla B: solo se imprime el total con IVA incluido, pero las líneas traen importe+%IVA.
+        // 2 líneas de 121 y 60,50 con IVA incluido al 21% → base 100+50 = 150, cuota 31,5 → total 181,50
+        var factura = Valida() with
+        {
+            LineasIncluyenIva = true,
+            Lineas =
+            [
+                new LineaExtraida("A", 1, 121m, 21m, 121m),
+                new LineaExtraida("B", 1, 60.5m, 21m, 60.5m),
+            ],
+            Totales = new TotalesExtraidos(null, null, null, 181.5m), // el documento solo imprime el total
+        };
+
+        Assert.Empty(_regla.Validar(Contexto(factura)));
+    }
+
+    [Fact]
+    public void Plantilla_b_falla_si_las_lineas_no_cuadran_con_el_total()
+    {
+        var factura = Valida() with
+        {
+            LineasIncluyenIva = true,
+            Lineas = [new LineaExtraida("A", 1, 121m, 21m, 121m)],
+            Totales = new TotalesExtraidos(null, null, null, 999m), // total no coincide con las líneas
+        };
+
+        var incidencias = _regla.Validar(Contexto(factura)).ToList();
+
+        Assert.Single(incidencias);
+        Assert.Contains("deducidas de las líneas", incidencias[0].Detalle);
+    }
+
+    [Fact]
+    public void No_verificable_solo_si_no_hay_ni_totales_ni_lineas()
+    {
+        // Sin base/cuota en totales y SIN líneas de las que deducir → no verificable
+        var factura = Valida() with
+        {
+            Lineas = [],
+            Totales = new TotalesExtraidos(null, null, null, 302.5m),
+        };
 
         var incidencias = _regla.Validar(Contexto(factura)).ToList();
 

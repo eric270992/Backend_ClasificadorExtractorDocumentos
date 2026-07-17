@@ -24,17 +24,33 @@ public sealed record FacturaExtraida(
             ? null
             : Lineas.Sum(l => l.ImporteLinea!.Value);
 
-    /// <summary>Contra qué debe cuadrar la suma de líneas: base+IVA si los importes llevan IVA, base si no.</summary>
+    /// <summary>Contra qué debe cuadrar la suma de líneas: base+IVA si los importes llevan IVA, base si no.
+    /// Usa los totales efectivos (derivados de las líneas si el documento no los imprime).</summary>
     public decimal? ImporteObjetivoLineas() =>
         LineasIncluyenIva
-            ? Totales.BaseImponible + Totales.CuotaIva
-            : Totales.BaseImponible;
+            ? BaseImponibleEfectiva() + CuotaIvaEfectiva()
+            : BaseImponibleEfectiva();
 
     /// <summary>Cuota de IVA que se deduce de las líneas (Σ base_línea × %IVA), o null si falta algún dato.</summary>
     public decimal? CuotaIvaCalculadaPorLineas() =>
         Lineas.Count == 0 || Lineas.Any(l => l.ImporteLinea is null || l.PorcentajeIva is null)
             ? null
             : Lineas.Sum(l => l.CuotaIva(LineasIncluyenIva)!.Value);
+
+    /// <summary>Base imponible que se deduce de las líneas (Σ base_línea), o null si falta algún dato.</summary>
+    public decimal? BaseImponibleCalculadaPorLineas() =>
+        Lineas.Count == 0 || Lineas.Any(l => l.ImporteLinea is null || l.PorcentajeIva is null)
+            ? null
+            : Lineas.Sum(l => l.BaseImponible(LineasIncluyenIva)!.Value);
+
+    /// <summary>Base imponible EFECTIVA: la del documento si la trae; si no, la deducida de las líneas.
+    /// Permite cuadrar facturas que solo imprimen el total con IVA incluido (p. ej. plantilla B).</summary>
+    public decimal? BaseImponibleEfectiva() =>
+        Totales.BaseImponible ?? BaseImponibleCalculadaPorLineas();
+
+    /// <summary>Cuota de IVA EFECTIVA: la del documento si la trae; si no, la deducida de las líneas.</summary>
+    public decimal? CuotaIvaEfectiva() =>
+        Totales.CuotaIva ?? CuotaIvaCalculadaPorLineas();
 
     /// <summary>Cuota de IVA esperada aplicando el %IVA global de los totales (cuando las líneas no lo
     /// traen). Usa la base imponible; si falta, la deriva del total. Null si no hay % global o no hay
