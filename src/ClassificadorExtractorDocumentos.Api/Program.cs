@@ -46,10 +46,13 @@ namespace ClassificadorExtractorDocumentos
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
+            }
 
-                // Auto-migración en desarrollo: crea la BD y aplica migraciones al arrancar, para que
-                // el proyecto funcione en un PC nuevo sin pasos manuales de EF. En producción, la
-                // migración se gestionaría de forma controlada (no automática).
+            // Migración al arrancar: crea la BD y aplica migraciones pendientes. Activa por defecto
+            // (dev y despliegue en un PC/servidor único). Se puede desactivar con Database:MigrateOnStartup=false
+            // para entornos con migración controlada (donde se aplican las migraciones aparte).
+            if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
+            {
                 using var scope = app.Services.CreateScope();
                 scope.ServiceProvider.GetRequiredService<DocFlowDbContext>().Database.Migrate();
             }

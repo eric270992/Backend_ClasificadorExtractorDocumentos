@@ -188,3 +188,81 @@ También puedes usar la API directamente:
 - [ ] `dotnet run` en la API (puerto 5255) — la BD se crea sola al arrancar.
 - [ ] `npm install` + `npm start` en el frontend (puerto 4200).
 - [ ] Abrir http://localhost:4200 y subir una factura de prueba.
+
+---
+
+## 9. Despliegue del backend (producción)
+
+En desarrollo los secretos van en `dotnet user-secrets`, que **no existe en un despliegue**. La
+configuración se resuelve por capas, y en producción los secretos van en un fichero propio que **no
+se versiona**:
+
+```
+appsettings.json                    (en el repo)  → configuración NO secreta + valores por defecto
+appsettings.Production.json         (NO en el repo, lo creas tú) → secretos reales del despliegue
+appsettings.Production.example.json (en el repo)  → PLANTILLA de qué rellenar
+```
+
+Una app publicada arranca en entorno **Production** por defecto, así que carga automáticamente
+`appsettings.json` + `appsettings.Production.json` (este último machaca lo que haga falta).
+
+### 9.1 Publicar
+
+Desde la raíz del repo:
+
+```bash
+dotnet publish src/ClassificadorExtractorDocumentos.Api -c Release -o publish
+```
+
+Genera la carpeta `publish/` con la aplicación lista para ejecutar. Cópiala al PC/servidor destino.
+
+### 9.2 Configurar los secretos (⚠️ imprescindible)
+
+En la carpeta `publish/` (junto a `ClassificadorExtractorDocumentos.Api.dll`):
+
+1. Copia `appsettings.Production.example.json` a **`appsettings.Production.json`**.
+2. Rellena los valores reales:
+   - `ConnectionStrings:DocFlowDb` → la BD de producción (con usuario y contraseña si usa login SQL).
+   - `Llm:Perfiles:Groq:ApiKey` → la clave de Groq (o cambia `Llm:Proveedor` a `Local`).
+
+> `appsettings.Production.json` está en `.gitignore`: nunca se sube al repositorio.
+
+### 9.3 Base de datos
+
+Al arrancar, la app **crea la BD y aplica las migraciones sola** (`Database:MigrateOnStartup=true`).
+Solo necesita que el servidor SQL de la cadena de conexión sea accesible. Para entornos con migración
+controlada, pon `Database:MigrateOnStartup: false` en `appsettings.Production.json` y aplica las
+migraciones aparte con `dotnet ef database update`.
+
+### 9.4 Ejecutar
+
+```bash
+cd publish
+dotnet ClassificadorExtractorDocumentos.Api.dll --urls http://0.0.0.0:5000
+```
+
+Escucha en el puerto 5000 (ajústalo). El log debe mostrar `Hosting environment: Production` y el
+proveedor LLM activo.
+
+### 9.5 Alternativa: variables de entorno (Docker / servidores)
+
+En lugar de (o además de) `appsettings.Production.json`, puedes inyectar los secretos por variables de
+entorno. El `:` de la configuración se escribe con doble guion bajo `__`:
+
+```bash
+ConnectionStrings__DocFlowDb="Server=...;User Id=app;Password=..."
+Llm__Perfiles__Groq__ApiKey="gsk_..."
+```
+
+Es el mecanismo natural con Docker (`docker run -e ...` o secrets de Docker/compose).
+
+### 9.6 Frontend
+
+El frontend se compila aparte y se sirve como estáticos:
+
+```bash
+npm run build   # genera dist/  (build de producción)
+```
+
+Sirve el contenido de `dist/` con cualquier servidor estático (nginx, IIS...) y apunta sus llamadas
+`/api` al backend publicado (equivalente al proxy de desarrollo).
