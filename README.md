@@ -36,11 +36,12 @@ despliegue del proyecto.
    # Si usas el LLM local, deja esta línea vacía o bórrala.
    GROQ_API_KEY=gsk_tu_clave
 
-   # Opcional: Groq deprecia modelos de vez en cuando (https://console.groq.com/docs/deprecations).
-   # Si el modelo por defecto deja de existir, descomenta y pon el que recomiende Groq (debe soportar visión).
-   # GROQ_MODEL=qwen/qwen3.6-27b
+   # Modelo de Groq (debe soportar visión). Groq deprecia modelos de vez en cuando
+   # (https://console.groq.com/docs/deprecations) — cámbialo aquí si el actual deja de existir.
+   GROQ_MODEL=qwen/qwen3.6-27b
 
-   # Solo si LLM_PROVIDER=Local: dónde escucha tu servidor LLM y qué modelo cargar.
+   # Solo si LLM_PROVIDER=Local: dónde escucha tu servidor LLM y qué modelo cargar. qwen2.5-vl-7b
+   # es el modelo de visión que hemos probado en LM Studio; puedes cargar otro modelo multimodal.
    # host.docker.internal = el mismo PC que Docker. Si el LLM está en otra máquina de la red,
    # pon su IP, p. ej. http://192.168.1.64:1234/v1
    LLM_LOCAL_BASEURL=http://host.docker.internal:1234/v1
@@ -70,8 +71,9 @@ El proveedor se elige con `LLM_PROVIDER` en el **mismo `.env` de arriba** (un so
 
 - **`LLM_PROVIDER=Groq`** (por defecto): rellena `GROQ_API_KEY`. Es lo más rápido para probar.
 - **`LLM_PROVIDER=Local`**: apunta `LLM_LOCAL_BASEURL` / `LLM_LOCAL_MODEL` a tu servidor y **deja
-  `GROQ_API_KEY` vacía**. En LM Studio hay que activar **"Serve on Local Network"** (que escuche en
-  `0.0.0.0`), o el contenedor no llegará hasta él.
+  `GROQ_API_KEY` vacía**. Probado con **`qwen2.5-vl-7b`** (modelo de visión) en LM Studio — hay que
+  activar **"Serve on Local Network"** (que escuche en `0.0.0.0`), o el contenedor no llegará hasta él.
+  Cualquier otro modelo multimodal servido con una API compatible OpenAI también funciona.
 
 > Guía completa (build desde el código, despliegue, publicación de imágenes):
 > **[docs/installation-guide.md](docs/installation-guide.md)** §10.
