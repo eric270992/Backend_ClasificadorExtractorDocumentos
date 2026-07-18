@@ -148,7 +148,7 @@ ClassificadorExtractorDocumentos/
 │       └── Controllers/                                  # DocumentosController, FacturasController, ConsultasController
 │
 ├── tests/
-│   └── ClassificadorExtractorDocumentos.UnitTests/        # 155 tests xUnit (reglas, parsers, SQL-guard...)
+│   └── ClassificadorExtractorDocumentos.UnitTests/        # 156 tests xUnit (reglas, parsers, SQL-guard...)
 │
 ├── docs/                                                  # Documentación, dataset de prueba y presentación
 │   ├── installation-guide.md · arquitectura.md · ...
@@ -171,7 +171,7 @@ ClassificadorExtractorDocumentos/
 | LLM | API compatible OpenAI, intercambiable por configuración: **Groq** (Qwen3.6 27B), **Nvidia** (Nemotron Nano VL) o **local** (LM Studio / Qwen2.5-VL) |
 | PDF → imagen | PDFtoImage / Pdfium (stack .NET nativo, sin microservicio Python) |
 | Frontend | Angular 21 (standalone) · PrimeNG 21 |
-| Tests | xUnit (155 tests unitarios) |
+| Tests | xUnit (156 tests unitarios) |
 
 ## 🚀 Cómo ejecutarlo
 
@@ -239,7 +239,7 @@ Añadir un proveedor nuevo es añadir un bloque a `Perfiles` — cero código. V
 dotnet test
 ```
 
-Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 155 tests), **integración** con LLM mockeado (E2) y
+Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 156 tests), **integración** con LLM mockeado (E2) y
 **evals** contra ground truth con LLM real (E2). El dataset de prueba está en `docs/datasets/`.
 
 ## 📊 Estado y hoja de ruta

@@ -170,6 +170,25 @@ public class ReglaIvaCoherenteTests
         Assert.Empty(_regla.Validar(Contexto(factura)));
     }
 
+    [Fact]
+    public void Cae_al_tipo_global_si_todas_las_lineas_dan_0_pese_a_cuota_no_cero()
+    {
+        // El modelo no informó el %IVA por línea y puso 0 por defecto en todas — un 0% real en
+        // todas las líneas sería incoherente con una cuota declarada distinta de 0. Debe caer al
+        // %IVA global en vez de reportar un falso mismatch contra el cálculo por líneas (que da 0).
+        var factura = Valida() with
+        {
+            Lineas =
+            [
+                new LineaExtraida("A", 1, 100m, 0m, 100m),
+                new LineaExtraida("B", 1, 150m, 0m, 150m),
+            ],
+            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m, PorcentajeIva: 21m),
+        };
+
+        Assert.Empty(_regla.Validar(Contexto(factura)));
+    }
+
     // ── Camino 2: sin %IVA por línea, pero con %IVA global en los totales ──
 
     [Fact]

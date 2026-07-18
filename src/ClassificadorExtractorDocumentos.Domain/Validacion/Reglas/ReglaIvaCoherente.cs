@@ -23,9 +23,12 @@ public class ReglaIvaCoherente : IReglaValidacion
             yield break;
         }
 
-        // 1) IVA por línea (caso preferente)
+        // 1) IVA por línea (caso preferente). Si el cálculo da EXACTAMENTE 0 pese a que la cuota
+        // declarada no es 0, no puede ser un 0% real por línea (si lo fuera, la cuota declarada
+        // también sería 0): es el modelo rellenando porcentajeIva=0 por defecto al no venir indicado
+        // por línea. Se descarta este caso y se cae al %IVA global en vez de un falso mismatch.
         var cuotaPorLineas = f.CuotaIvaCalculadaPorLineas();
-        if (cuotaPorLineas is not null)
+        if (cuotaPorLineas is not null && cuotaPorLineas.Value != 0m)
         {
             if (Math.Abs(cuotaPorLineas.Value - cuota.Value) > contexto.ToleranciaCuadre)
             {
