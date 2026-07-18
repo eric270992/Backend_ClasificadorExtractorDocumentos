@@ -9,7 +9,7 @@ public class FacturaStagingRepository(DocFlowDbContext db, TimeProvider timeProv
     public Task<bool> ExisteFacturaAsync(string nifEmisor, string numeroFactura, CancellationToken cancellationToken = default) =>
         db.FacturasStaging.AnyAsync(
             f => f.NumeroFactura == numeroFactura && f.Proveedor != null && f.Proveedor.Nif == nifEmisor
-                && f.FechaEliminacion == null,
+                && f.FechaEliminacion == null && f.Estado != EstadoFactura.Rechazada,
             cancellationToken);
 
     public async Task<int> GuardarAsync(
