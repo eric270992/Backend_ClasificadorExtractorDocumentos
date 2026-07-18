@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -53,6 +54,9 @@ public class OpenAiCompatibleLlmClient(HttpClient httpClient, IOptions<LlmOption
         {
             Content = JsonContent.Create(cuerpo, options: JsonOptions),
         };
+        // JsonContent.Create añade "; charset=utf-8" por defecto; algunos proveedores (Nvidia NIM)
+        // lo rechazan con 415 exigiendo el media type exacto "application/json", sin parámetros.
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
         // Los servidores locales (LM Studio, Ollama) no requieren clave
         if (!string.IsNullOrWhiteSpace(_options.ApiKey))
