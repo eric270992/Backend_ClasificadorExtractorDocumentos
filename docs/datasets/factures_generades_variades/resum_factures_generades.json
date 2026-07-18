@@ -328,5 +328,60 @@
     "base": 1688.9,
     "iva": 354.67,
     "total": 2043.57
+  },
+  {
+    "plantilla": "D",
+    "fitxer": "plantilla_d_01.pdf",
+    "proveidor": "Electricitat Bonavista, S.L.",
+    "nif": "B17445566",
+    "num_factura": "482/2026",
+    "data": "10/07/2026",
+    "base": 634.9,
+    "iva": 133.33,
+    "total": 768.23
+  },
+  {
+    "plantilla": "D",
+    "fitxer": "plantilla_d_02.pdf",
+    "proveidor": "Papereria i Oficines Garrotxa, S.C.P.",
+    "nif": "B17998877",
+    "num_factura": "F2026-0356",
+    "data": "05/07/2026",
+    "base": 294.85,
+    "iva": 61.92,
+    "total": 356.77
+  },
+  {
+    "plantilla": "D",
+    "fitxer": "plantilla_d_03.pdf",
+    "proveidor": "Serralleria Metàl·lica Puigneró, S.L.",
+    "nif": "B17556677",
+    "num_factura": "119/2026",
+    "data": "14/07/2026",
+    "base": 1100.5,
+    "iva": 231.11,
+    "total": 1331.61
+  },
+  {
+    "plantilla": "D",
+    "fitxer": "plantilla_d_04.pdf",
+    "proveidor": "Jardineria i Espais Verds Ripoll, S.L.",
+    "nif": "B17334455",
+    "num_factura": "F2026-0891",
+    "data": "16/07/2026",
+    "base": 682.0,
+    "iva": 143.22,
+    "total": 825.22
+  },
+  {
+    "plantilla": "D",
+    "fitxer": "plantilla_d_05.pdf",
+    "proveidor": "Transports i Logística Bages, S.A.",
+    "nif": "A08776655",
+    "num_factura": "TL-2026-0243",
+    "data": "17/07/2026",
+    "base": 425.0,
+    "iva": 89.25,
+    "total": 514.25
   }
 ]
