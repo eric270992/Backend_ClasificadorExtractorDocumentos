@@ -104,15 +104,21 @@ public sealed record LineaExtraida(
     decimal? PorcentajeIva,
     decimal? ImporteLinea)
 {
+    /// <summary>PorcentajeIva normalizado: el modelo a veces confunde "21" (formato esperado) con
+    /// "0.21" (fracción). Ningún tipo de IVA real está entre 0 y 1 (los tipos son 21, 10, 4, 0), así
+    /// que un valor en ese rango se interpreta como fracción y se multiplica ×100.</summary>
+    private decimal? PorcentajeIvaNormalizado =>
+        PorcentajeIva is > 0m and < 1m ? PorcentajeIva * 100m : PorcentajeIva;
+
     /// <summary>Base imponible de la línea: el importe tal cual, o descontando el IVA si va incluido.</summary>
     public decimal? BaseImponible(bool importeIncluyeIva) =>
         importeIncluyeIva
-            ? ImporteLinea / (1m + PorcentajeIva / 100m)
+            ? ImporteLinea / (1m + PorcentajeIvaNormalizado / 100m)
             : ImporteLinea;
 
     /// <summary>Cuota de IVA de la línea (base × %IVA), o null si falta importe o porcentaje.</summary>
     public decimal? CuotaIva(bool importeIncluyeIva) =>
-        BaseImponible(importeIncluyeIva) * (PorcentajeIva / 100m);
+        BaseImponible(importeIncluyeIva) * (PorcentajeIvaNormalizado / 100m);
 }
 
 public sealed record TotalesExtraidos(

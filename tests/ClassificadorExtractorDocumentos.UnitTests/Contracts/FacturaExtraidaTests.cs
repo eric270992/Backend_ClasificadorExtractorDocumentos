@@ -48,6 +48,18 @@ public class FacturaExtraidaTests
     }
 
     [Fact]
+    public void PorcentajeIva_en_fraccion_0a1_se_normaliza_como_si_fuera_porcentaje()
+    {
+        // El modelo a veces confunde 21 (esperado) con 0.21 (fracción). 100€ al "0.21" debe dar
+        // la misma cuota que al 21 (21€): ningún tipo de IVA real está entre 0 y 1.
+        var conFraccion = new LineaExtraida("X", 1, 100m, 0.21m, 100m);
+        var conEntero = new LineaExtraida("X", 1, 100m, 21m, 100m);
+
+        Assert.Equal(conEntero.CuotaIva(importeIncluyeIva: false), conFraccion.CuotaIva(importeIncluyeIva: false));
+        Assert.Equal(21m, conFraccion.CuotaIva(importeIncluyeIva: false));
+    }
+
+    [Fact]
     public void TotalCalculado_es_base_mas_iva_menos_irpf()
     {
         var totales = new TotalesExtraidos(250m, 52.5m, 37.5m, 265m);
