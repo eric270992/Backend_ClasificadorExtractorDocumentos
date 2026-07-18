@@ -14,8 +14,9 @@ public class ExtractorAgent(ILlmClient llmClient)
     /// desconocido, sin ejemplos few-shot). El nivel 2 (few-shot, proveedor ya conocido) llega en Etapa 2.</summary>
     public const byte NivelExtraccionGenerica = 3;
 
-    /// <summary>Groq/Llama 4 Scout admite máximo 5 imágenes por petición. Los datos de una factura
-    /// están en las primeras páginas; documentos más largos se truncan (limitación anotada, E1-F2).</summary>
+    /// <summary>El modelo multimodal de Groq admite máximo 5 imágenes por petición (límite del
+    /// proveedor; verificado con qwen/qwen3.6-27b). Los datos de una factura están en las primeras
+    /// páginas; documentos más largos se truncan (limitación anotada, E1-F2).</summary>
     public const int MaxPaginasPorPeticion = 5;
 
     private static readonly Lazy<(string Sistema, string Usuario)> Prompt =

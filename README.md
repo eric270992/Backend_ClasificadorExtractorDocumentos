@@ -148,7 +148,7 @@ ClassificadorExtractorDocumentos/
 |---|---|
 | Backend | .NET 10 · Minimal hosting · Controllers REST |
 | Persistencia | SQL Server (LocalDB en dev) · EF Core (escritura) · Dapper (consultas del Consultor) |
-| LLM | API compatible OpenAI, intercambiable por configuración: **Groq** (Llama 4 Scout) o **local** (LM Studio / Qwen2.5-VL) |
+| LLM | API compatible OpenAI, intercambiable por configuración: **Groq** (Qwen3.6 27B) o **local** (LM Studio / Qwen2.5-VL) |
 | PDF → imagen | PDFtoImage / Pdfium (stack .NET nativo, sin microservicio Python) |
 | Frontend | Angular 21 (standalone) · PrimeNG 21 |
 | Tests | xUnit (155 tests unitarios) |
