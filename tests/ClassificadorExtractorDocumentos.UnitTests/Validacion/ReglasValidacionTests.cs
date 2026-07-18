@@ -463,3 +463,34 @@ public class ReglaDuplicadoTests
         Assert.Equal(SeveridadIncidencia.Rechazo, incidencias[0].Severidad);
     }
 }
+
+/// <summary>Prueba de integración ligera: ContextoValidacion.Crear (el punto de entrada real desde
+/// los orquestadores) corrige LineasIncluyenIva y ninguna regla que dependa de ella se queja ya.</summary>
+public class ContextoValidacionCrearTests
+{
+    [Fact]
+    public void Crear_corrige_lineasIncluyenIva_y_las_reglas_dependientes_dejan_de_quejarse()
+    {
+        var factura = Valida() with
+        {
+            LineasIncluyenIva = true, // declarado por el modelo (incorrecto)
+            Lineas =
+            [
+                new LineaExtraida("A", 2, 4.7m, 21m, 9.4m),
+                new LineaExtraida("B", 5, 41.1m, 21m, 205.5m),
+            ],
+            Totales = new TotalesExtraidos(214.9m, 45.13m, null, 260.03m),
+        };
+
+        // Con el contexto "a pelo" (como en los tests de arriba, sin pasar por Crear), las reglas SÍ se quejarían.
+        var contextoSinCorregir = new ContextoValidacion(factura, ExisteDuplicado: false, Hoy);
+        Assert.NotEmpty(new ReglaCuadreLineas().Validar(contextoSinCorregir));
+        Assert.NotEmpty(new ReglaIvaCoherente().Validar(contextoSinCorregir));
+
+        // Con Crear (el punto de entrada real de los orquestadores), se autocorrige y ya no hay incidencias.
+        var contexto = ContextoValidacion.Crear(factura, existeDuplicado: false, Hoy);
+        Assert.False(contexto.Factura.LineasIncluyenIva);
+        Assert.Empty(new ReglaCuadreLineas().Validar(contexto));
+        Assert.Empty(new ReglaIvaCoherente().Validar(contexto));
+    }
+}

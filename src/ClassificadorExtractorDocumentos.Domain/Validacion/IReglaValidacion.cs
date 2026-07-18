@@ -28,4 +28,18 @@ public sealed record ContextoValidacion(
     FacturaExtraida Factura,
     bool ExisteDuplicado,
     DateOnly FechaReferencia,
-    decimal ToleranciaCuadre = 0.02m);
+    decimal ToleranciaCuadre = 0.02m)
+{
+    /// <summary>Construye el contexto autocorrigiendo Factura.LineasIncluyenIva si el valor declarado
+    /// no es internamente consistente pero el contrario sí (ver FacturaExtraida.LineasIncluyenIvaEfectivo).
+    /// Único punto de entrada recomendado: así todas las reglas ven la misma factura ya corregida.</summary>
+    public static ContextoValidacion Crear(
+        FacturaExtraida factura, bool existeDuplicado, DateOnly fechaReferencia, decimal toleranciaCuadre = 0.02m)
+    {
+        var efectivo = factura.LineasIncluyenIvaEfectivo(toleranciaCuadre);
+        var facturaEfectiva = efectivo == factura.LineasIncluyenIva
+            ? factura
+            : factura with { LineasIncluyenIva = efectivo };
+        return new ContextoValidacion(facturaEfectiva, existeDuplicado, fechaReferencia, toleranciaCuadre);
+    }
+}

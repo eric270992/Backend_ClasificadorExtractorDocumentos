@@ -112,6 +112,48 @@ public class FacturaExtraidaTests
     }
 
     [Fact]
+    public void LineasIncluyenIvaEfectivo_se_autocorrige_si_lo_declarado_no_es_consistente()
+    {
+        // Bug real visto con varios proveedores LLM (Nvidia, local): el modelo declara
+        // LineasIncluyenIva=true cuando en realidad las líneas son solo base (sin IVA incluido).
+        // Lo declarado no cuadra (Σlíneas=214,90 vs base+IVA=260,03); lo contrario sí cuadra en
+        // ambos frentes (Σlíneas y cuota por líneas).
+        var factura = FacturaDePrueba.Valida() with
+        {
+            LineasIncluyenIva = true, // declarado por el modelo (incorrecto)
+            Lineas =
+            [
+                new LineaExtraida("A", 2, 4.7m, 21m, 9.4m),
+                new LineaExtraida("B", 5, 41.1m, 21m, 205.5m),
+            ],
+            Totales = new TotalesExtraidos(214.9m, 45.13m, null, 260.03m),
+        };
+
+        Assert.False(factura.LineasIncluyenIvaEfectivo(0.02m));
+    }
+
+    [Fact]
+    public void LineasIncluyenIvaEfectivo_no_cambia_si_lo_declarado_ya_es_consistente()
+    {
+        Assert.False(FacturaDePrueba.Valida().LineasIncluyenIvaEfectivo(0.02m));
+    }
+
+    [Fact]
+    public void LineasIncluyenIvaEfectivo_no_cambia_si_ninguna_interpretacion_cuadra()
+    {
+        // Ni con IVA incluido ni sin él las líneas cuadran con los totales: no hay señal
+        // suficiente para autocorregir, se respeta lo declarado (aquí, true).
+        var factura = FacturaDePrueba.Valida() with
+        {
+            LineasIncluyenIva = true,
+            Lineas = [new LineaExtraida("A", 1, 999m, 21m, 999m)],
+            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m),
+        };
+
+        Assert.True(factura.LineasIncluyenIvaEfectivo(0.02m));
+    }
+
+    [Fact]
     public void CuotaIvaEsperadaPorTipoGlobal_usa_la_base_si_existe()
     {
         // base 250 × 21% = 52,5

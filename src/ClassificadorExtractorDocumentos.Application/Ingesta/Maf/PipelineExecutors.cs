@@ -50,7 +50,7 @@ internal sealed partial class ValidadorExecutor(
         var existeDuplicado = factura.Emisor.Nif is not null && factura.Factura.Numero is not null &&
             await repositorio.ExisteFacturaAsync(factura.Emisor.Nif, factura.Factura.Numero);
 
-        var contexto = new ContextoValidacion(
+        var contexto = ContextoValidacion.Crear(
             factura, existeDuplicado, DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime));
         var validacion = validador.Validar(contexto);
 

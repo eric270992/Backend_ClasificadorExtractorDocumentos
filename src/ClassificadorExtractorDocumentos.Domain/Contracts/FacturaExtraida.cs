@@ -75,6 +75,37 @@ public sealed record FacturaExtraida(
         return null;
     }
 
+    /// <summary>Valor efectivo de "LineasIncluyenIva" a usar en las reglas: el declarado por el modelo,
+    /// o el contrario si ESE no es internamente consistente (no cuadra Σlíneas ni la cuota de IVA) pero
+    /// el contrario sí lo es. El modelo confunde este flag de vez en cuando (visto con varios
+    /// proveedores LLM) — solo se autocorrige cuando hay señal suficiente para hacerlo con confianza;
+    /// si ninguna de las dos interpretaciones cuadra, se respeta lo declarado.</summary>
+    public bool LineasIncluyenIvaEfectivo(decimal toleranciaCuadre)
+    {
+        if (EsConsistente(this))
+        {
+            return LineasIncluyenIva;
+        }
+
+        var contraria = this with { LineasIncluyenIva = !LineasIncluyenIva };
+        return EsConsistente(contraria) ? contraria.LineasIncluyenIva : LineasIncluyenIva;
+
+        bool EsConsistente(FacturaExtraida f)
+        {
+            var suma = f.SumaLineas();
+            var objetivo = f.ImporteObjetivoLineas();
+            if (suma is null || objetivo is null || Math.Abs(suma.Value - objetivo.Value) > toleranciaCuadre)
+            {
+                return false;
+            }
+
+            var cuotaPorLineas = f.CuotaIvaCalculadaPorLineas();
+            var cuotaDeclarada = f.Totales.CuotaIva;
+            return cuotaPorLineas is null || cuotaDeclarada is null
+                || Math.Abs(cuotaPorLineas.Value - cuotaDeclarada.Value) <= toleranciaCuadre;
+        }
+    }
+
     /// <summary>Nombres de campos obligatorios ausentes en la extracción (vacío = factura procesable).</summary>
     public IReadOnlyList<string> CamposObligatoriosAusentes()
     {
