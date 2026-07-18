@@ -28,13 +28,18 @@ services:
       Database__Proveedor: "SqlServer"
       ConnectionStrings__SqlServer: "Server=db,1433;Database=DocFlowAI;User Id=sa;Password=${MSSQL_SA_PASSWORD:-DocFlow_Dev123!};TrustServerCertificate=True;"
       Database__MigrateOnStartup: "true"
-      # Proveedor LLM: "Groq" (nube, por defecto) o "Local" (LM Studio/Ollama). Se elige en el .env.
+      # Proveedor LLM: "Groq" (nube, por defecto), "Nvidia" (nube, límite por petición no por token)
+      # o "Local" (LM Studio/Ollama). Se elige en el .env.
       Llm__Proveedor: "${LLM_PROVIDER:-Groq}"
-      # Vacía por defecto: si usas el LLM local no necesitas clave de Groq (no da aviso al arrancar).
+      # Vacía por defecto: si usas otro proveedor no necesitas clave de Groq (no da aviso al arrancar).
       Llm__Perfiles__Groq__ApiKey: "${GROQ_API_KEY:-}"
       # Groq deprecia modelos con cierta frecuencia (ver https://console.groq.com/docs/deprecations).
       # Si el modelo por defecto deja de existir, sobreescribe GROQ_MODEL en el .env sin esperar una imagen nueva.
       Llm__Perfiles__Groq__Model: "${GROQ_MODEL:-qwen/qwen3.6-27b}"
+      # Nvidia build.nvidia.com: gratis sin tarjeta, límite de 40 peticiones/minuto (no por token como
+      # Groq) — mejor opción si las imágenes de las facturas son grandes. Clave en build.nvidia.com.
+      Llm__Perfiles__Nvidia__ApiKey: "${NVIDIA_API_KEY:-}"
+      Llm__Perfiles__Nvidia__Model: "${NVIDIA_MODEL:-meta/llama-4-scout-17b-16e-instruct}"
       # Para Local: URL del servidor. Si corre en el mismo PC que Docker, usa host.docker.internal.
       Llm__Perfiles__Local__BaseUrl: "${LLM_LOCAL_BASEURL:-http://host.docker.internal:1234/v1}"
       Llm__Perfiles__Local__Model: "${LLM_LOCAL_MODEL:-qwen/qwen2.5-vl-7b}"

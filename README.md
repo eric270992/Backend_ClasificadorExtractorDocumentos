@@ -29,16 +29,23 @@ despliegue del proyecto.
    # Contraseña de SQL Server (obligatoria). Complejidad: mayúsculas, minúsculas, número y símbolo.
    MSSQL_SA_PASSWORD=UnaClaveFuerte123!
 
-   # Proveedor del LLM: "Groq" (nube, por defecto) o "Local" (LM Studio / Ollama).
+   # Proveedor del LLM: "Groq" (nube, por defecto), "Nvidia" (nube, límite por petición no por
+   # token) o "Local" (LM Studio / Ollama).
    LLM_PROVIDER=Groq
 
    # Solo si LLM_PROVIDER=Groq: tu clave (gratis en https://console.groq.com).
-   # Si usas el LLM local, deja esta línea vacía o bórrala.
+   # Deja esta línea vacía o bórrala si usas otro proveedor.
    GROQ_API_KEY=gsk_tu_clave
 
    # Modelo de Groq (debe soportar visión). Groq deprecia modelos de vez en cuando
    # (https://console.groq.com/docs/deprecations) — cámbialo aquí si el actual deja de existir.
    GROQ_MODEL=qwen/qwen3.6-27b
+
+   # Solo si LLM_PROVIDER=Nvidia: tu clave gratis (sin tarjeta) en https://build.nvidia.com.
+   # Límite de 40 peticiones/minuto en vez de tokens/minuto — mejor si Groq se queda corto con
+   # imágenes grandes. Deja vacía si usas otro proveedor.
+   NVIDIA_API_KEY=nvapi-tu_clave
+   NVIDIA_MODEL=meta/llama-4-scout-17b-16e-instruct
 
    # Solo si LLM_PROVIDER=Local: dónde escucha tu servidor LLM y qué modelo cargar. qwen2.5-vl-7b
    # es el modelo de visión que hemos probado en LM Studio; puedes cargar otro modelo multimodal.
@@ -65,15 +72,22 @@ docker compose -f docker-compose.deploy.yml up -d
 ```
 `-v` borra también los volúmenes (base de datos y ficheros): recrea todo limpio en el siguiente `up`.
 
-### Groq (nube) o LLM local (LM Studio / Ollama)
+### Groq, Nvidia (nube) o LLM local (LM Studio / Ollama)
 
 El proveedor se elige con `LLM_PROVIDER` en el **mismo `.env` de arriba** (un solo fichero, un solo bloque):
 
-- **`LLM_PROVIDER=Groq`** (por defecto): rellena `GROQ_API_KEY`. Es lo más rápido para probar.
+- **`LLM_PROVIDER=Groq`** (por defecto): rellena `GROQ_API_KEY`. Es lo más rápido para probar, pero
+  su capa gratuita limita por **tokens/minuto** — con imágenes de factura a alta resolución, una
+  sola página puede agotar el límite (ver [comparativa-llm-local.md](docs/comparativa-llm-local.md)).
+- **`LLM_PROVIDER=Nvidia`**: rellena `NVIDIA_API_KEY` (gratis, sin tarjeta, en
+  [build.nvidia.com](https://build.nvidia.com)). Su límite gratuito es por **petición** (40/min), no
+  por token — mejor opción si Groq da error 413 "Request too large". Usa el mismo
+  `meta/llama-4-scout-17b-16e-instruct` que se evaluó en `docs/resultados-e1-f2.md`.
 - **`LLM_PROVIDER=Local`**: apunta `LLM_LOCAL_BASEURL` / `LLM_LOCAL_MODEL` a tu servidor y **deja
-  `GROQ_API_KEY` vacía**. Probado con **`qwen2.5-vl-7b`** (modelo de visión) en LM Studio — hay que
-  activar **"Serve on Local Network"** (que escuche en `0.0.0.0`), o el contenedor no llegará hasta él.
-  Cualquier otro modelo multimodal servido con una API compatible OpenAI también funciona.
+  las claves de Groq/Nvidia vacías**. Probado con **`qwen2.5-vl-7b`** (modelo de visión) en LM
+  Studio — hay que activar **"Serve on Local Network"** (que escuche en `0.0.0.0`), o el contenedor
+  no llegará hasta él. Cualquier otro modelo multimodal servido con una API compatible OpenAI
+  también funciona.
 
 > Guía completa (build desde el código, despliegue, publicación de imágenes):
 > **[docs/installation-guide.md](docs/installation-guide.md)** §10.
@@ -150,7 +164,7 @@ ClassificadorExtractorDocumentos/
 |---|---|
 | Backend | .NET 10 · Minimal hosting · Controllers REST |
 | Persistencia | SQL Server (LocalDB en dev) · EF Core (escritura) · Dapper (consultas del Consultor) |
-| LLM | API compatible OpenAI, intercambiable por configuración: **Groq** (Qwen3.6 27B) o **local** (LM Studio / Qwen2.5-VL) |
+| LLM | API compatible OpenAI, intercambiable por configuración: **Groq** (Qwen3.6 27B), **Nvidia** (Llama 4 Scout) o **local** (LM Studio / Qwen2.5-VL) |
 | PDF → imagen | PDFtoImage / Pdfium (stack .NET nativo, sin microservicio Python) |
 | Frontend | Angular 21 (standalone) · PrimeNG 21 |
 | Tests | xUnit (155 tests unitarios) |
