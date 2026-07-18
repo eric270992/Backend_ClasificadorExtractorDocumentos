@@ -10,12 +10,16 @@ teclean a mano en su ERP.
 > **Estado**: Etapa 1 (demo vertical) completa y funcional. Etapa 2 (consolidación) pendiente. Véase
 > [hoja de ruta](#-estado-y-hoja-de-ruta).
 
+> **🔐 Login**: la aplicación **no tiene sistema de autenticación** (no aplica usuario/contraseña de prueba).
+> Es de uso libre en cuanto se levanta con Docker.
+
 ---
 
-## 🚀 Probarlo en 1 minuto (Docker, sin código)
+## 🚀 Despliegue: probarlo en 1 minuto (Docker, sin código)
 
 Si solo quieres **usar** la aplicación, **no hace falta descargar el código**. Con Docker se levanta todo
-(base de datos + API + frontend) a partir de imágenes ya publicadas.
+(base de datos + API + frontend) a partir de imágenes ya publicadas — esta es toda la información de
+despliegue del proyecto.
 
 1. Instala **[Docker](https://www.docker.com/products/docker-desktop/)**.
 2. Descarga el fichero **[`docker-compose.deploy.yml`](docker-compose.deploy.yml)** de este repositorio.
@@ -85,6 +89,44 @@ Api  →  Application  →  Domain  ←  Infrastructure
 
 📖 **Explicación detallada (para quien viene de arquitectura N-capas)**: [`docs/arquitectura.md`](docs/arquitectura.md)
 — incluye diagramas Mermaid y un glosario DDD ↔ N-capas.
+
+## 📁 Estructura del proyecto
+
+```
+ClassificadorExtractorDocumentos/
+├── src/
+│   ├── ClassificadorExtractorDocumentos.Domain/          # Núcleo: entidades, contratos, reglas (sin dependencias)
+│   │   ├── Entities/                                     # FacturaStaging, FacturaLinea, Proveedor...
+│   │   ├── Contracts/                                    # Interfaces (IDAO/IService) + DTOs
+│   │   ├── Validacion/Reglas/                             # Las 9 reglas de negocio (Strategy)
+│   │   ├── ValueObjects/ · Parsers/                       # Nif, FechaParser, NumeroParser
+│   │   │
+│   ├── ClassificadorExtractorDocumentos.Application/      # Casos de uso: agentes + orquestador
+│   │   ├── Extraccion/ · Validacion/ · Consultor/         # Agentes Extractor, Validador, Consultor
+│   │   ├── Ingesta/ (+ Ingesta/Maf/)                      # Orquestador manual y Workflow MAF
+│   │   ├── Llm/ · Prompts/                                # Prompts versionados (.md)
+│   │   │
+│   ├── ClassificadorExtractorDocumentos.Infrastructure/   # Detalles técnicos: EF Core, LLM, PDF→imagen
+│   │   ├── Persistence/ (+ Configurations/)               # DbContext, repositorios, mapeo EF
+│   │   ├── Llm/ · Pdf/ · Imagen/ · Storage/ · Consultor/
+│   │   │
+│   └── ClassificadorExtractorDocumentos.Api/              # Entrada REST (Controllers, Program.cs)
+│       └── Controllers/                                  # DocumentosController, FacturasController, ConsultasController
+│
+├── tests/
+│   └── ClassificadorExtractorDocumentos.UnitTests/        # 133 tests xUnit (reglas, parsers, SQL-guard...)
+│
+├── docs/                                                  # Documentación, dataset de prueba y presentación
+│   ├── installation-guide.md · arquitectura.md · ...
+│   ├── datasets/                                          # 43 PDFs de prueba (generados + reales)
+│   └── DocFlowAI-Presentacion.pptx                        # Slides del proyecto
+│
+├── docker-compose.yml · docker-compose.deploy.yml · Dockerfile
+└── README.md
+```
+
+> El **frontend Angular** vive en un repositorio separado:
+> [Frontend_ClasificadorExtractorDocumentos](https://github.com/eric270992/Frontend_ClasificadorExtractorDocumentos).
 
 ## 🧰 Stack tecnológico
 
@@ -178,6 +220,12 @@ Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 133 tests), **integraci�
 - [ ] Few-shot por proveedor (nivel 2) + evaluaciones automáticas
 - [ ] Pantalla de revisión humana editable
 - [ ] Integrador ERP simulado + tests de integración
+
+## 🎬 Presentación y vídeo
+
+- **Slides**: [`docs/DocFlowAI-Presentacion.pptx`](docs/DocFlowAI-Presentacion.pptx) — qué se ha construido,
+  cómo, stack, dificultades encontradas y despliegue.
+- **Vídeo explicativo**: _[pendiente de añadir la URL tras grabarlo]_
 
 ## 📚 Documentación
 
