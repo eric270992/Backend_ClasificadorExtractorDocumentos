@@ -52,6 +52,14 @@ despliegue del proyecto.
 Docker se descarga las imágenes (`ghcr.io/eric270992/docflow-ai-api` y `…-web`), arranca SQL Server, crea
 la base de datos sola y sirve el frontend. Para pararlo: `docker compose -f docker-compose.deploy.yml down`.
 
+**Reiniciar desde cero** (por ejemplo, si cambias `MSSQL_SA_PASSWORD` en el `.env`: la contraseña de SQL
+Server solo se fija al crear el volumen la primera vez, cambiarla después no basta con un `down`/`up`):
+```bash
+docker compose -f docker-compose.deploy.yml down -v
+docker compose -f docker-compose.deploy.yml up -d
+```
+`-v` borra también los volúmenes (base de datos y ficheros): recrea todo limpio en el siguiente `up`.
+
 ### Groq (nube) o LLM local (LM Studio / Ollama)
 
 El proveedor se elige con `LLM_PROVIDER` en el **mismo `.env` de arriba** (un solo fichero, un solo bloque):
@@ -226,11 +234,10 @@ Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 155 tests), **integraci�
 - [ ] Pantalla de revisión humana editable
 - [ ] Integrador ERP simulado + tests de integración
 
-## 🎬 Presentación y vídeo
+## 🎬 Presentación
 
 - **Slides**: [`docs/DocFlowAI-Presentacion.pptx`](docs/DocFlowAI-Presentacion.pptx) — qué se ha construido,
   cómo, stack, dificultades encontradas y despliegue.
-- **Vídeo explicativo**: _[pendiente de añadir la URL tras grabarlo]_
 
 ## 📚 Documentación
 
