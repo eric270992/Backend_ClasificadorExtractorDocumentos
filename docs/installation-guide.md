@@ -18,8 +18,9 @@
 - **LocalDB** viene con "SQL Server Express LocalDB" o con Visual Studio (carga de trabajo de datos).
   Alternativa: cualquier SQL Server; solo hay que ajustar la cadena de conexión (paso 3.3).
 - Instalar `dotnet-ef` si no está: `dotnet tool install --global dotnet-ef`
-- Además necesitarás **una clave de API de Groq** (gratuita en https://console.groq.com) **o** un
-  servidor LLM local (LM Studio/Ollama). Ver paso 4.
+- Además necesitarás **una clave de API de Groq** (gratuita en https://console.groq.com), **una clave
+  de Nvidia** (gratuita, sin tarjeta, en https://build.nvidia.com) **o** un servidor LLM local
+  (LM Studio/Ollama). Ver paso 4.
 
 ---
 
@@ -105,13 +106,14 @@ curl http://localhost:5255/facturas
 
 ## 4. Configuración del proveedor LLM
 
-El sistema puede usar **Groq (nube)** o un **modelo local (LM Studio/Ollama)**. Se elige por perfil,
-por orden de prioridad:
+El sistema puede usar **Groq (nube)**, **Nvidia (nube)** o un **modelo local (LM Studio/Ollama)**. Se
+elige por perfil, por orden de prioridad:
 
 ```bash
 # 1. Por argumento al arrancar
 dotnet run -- --llm Local
 dotnet run -- --llm Groq
+dotnet run -- --llm Nvidia
 
 # 2. Por variable de entorno
 #    Windows PowerShell:  $env:Llm__Proveedor="Local"; dotnet run
@@ -120,7 +122,12 @@ dotnet run -- --llm Groq
 # 3. Por appsettings.json:  "Llm": { "Proveedor": "Groq" }
 ```
 
-- **Groq**: necesita la clave (paso 3.3) e internet. Rápido, ideal para demos.
+- **Groq**: necesita la clave (paso 3.3) e internet. Rápido, ideal para demos, pero su capa gratuita
+  limita por **tokens/minuto** — con imágenes de factura a alta resolución, una sola página puede
+  agotar el límite (error 413 "Request too large").
+- **Nvidia**: necesita una clave de https://build.nvidia.com (gratis, sin tarjeta) en
+  `Llm:Perfiles:Nvidia:ApiKey`. Su límite gratuito es por **petición** (40/min), no por token — mejor
+  opción si Groq da el error anterior. El Free Endpoint solo admite **1 imagen por petición**.
 - **Local**: necesita un servidor LM Studio/Ollama accesible. La URL y el modelo se configuran en
   `appsettings.json` → `Llm:Perfiles:Local` (por defecto apunta a `http://192.168.1.64:1234/v1`,
   modelo `qwen/qwen2.5-vl-7b`). No requiere clave. Ajusta la IP a tu red.
@@ -306,9 +313,18 @@ docker compose -f docker-compose.deploy.yml up -d
 Docker descarga las imágenes (`ghcr.io/eric270992/docflow-ai-api` y `...-web`) y las levanta. Abre
 http://localhost:8080. (Requiere que las imágenes estén publicadas y sean públicas — ver 10.3.)
 
-#### Elegir el proveedor LLM en Docker (Groq o local)
+#### Elegir el proveedor LLM en Docker (Groq, Nvidia o local)
 
-Por defecto el compose usa **Groq** (nube). Para usar un **LLM local** (LM Studio / Ollama), añade al `.env`:
+Por defecto el compose usa **Groq** (nube). Para usar **Nvidia** (nube, límite por petición en vez de
+por token — ver §4), añade al `.env`:
+
+```env
+LLM_PROVIDER=Nvidia
+NVIDIA_API_KEY=nvapi-tu_clave
+NVIDIA_MODEL=nvidia/llama-3.1-nemotron-nano-vl-8b-v1
+```
+
+Para usar un **LLM local** (LM Studio / Ollama), añade al `.env`:
 
 ```env
 LLM_PROVIDER=Local
@@ -317,7 +333,7 @@ LLM_LOCAL_BASEURL=http://host.docker.internal:1234/v1   # si corre en el MISMO P
 LLM_LOCAL_MODEL=qwen/qwen2.5-vl-7b
 ```
 
-- Con `LLM_PROVIDER=Local` no hace falta `GROQ_API_KEY`.
+- Con `LLM_PROVIDER=Local` o `Nvidia` no hace falta `GROQ_API_KEY`.
 - Dentro del contenedor, `localhost` es el propio contenedor: para alcanzar un LM Studio del **host** se
   usa `host.docker.internal` (el compose ya añade `extra_hosts` para que funcione también en Linux).
 - En LM Studio hay que activar **"Serve on Local Network"** (escuchar en `0.0.0.0`) o el contenedor no

@@ -538,7 +538,7 @@ lo que nos deja cambiar de LLM o añadir MAF sin romper nada.
 
 ## 12. Qué nos aporta todo esto (resumen del "por qué")
 
-1. **Se puede probar sin infraestructura.** Los 133 tests unitarios corren sin base de datos ni LLM
+1. **Se puede probar sin infraestructura.** Los 157 tests unitarios corren sin base de datos ni LLM
    reales, porque la lógica (reglas, parsers, orquestador, guard) depende de interfaces que sustituimos
    por dobles de prueba. En N capas clásico esto es mucho más difícil porque la BLL arrastra la DAL.
 
