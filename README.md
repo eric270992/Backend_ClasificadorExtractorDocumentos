@@ -43,9 +43,10 @@ despliegue del proyecto.
 
    # Solo si LLM_PROVIDER=Nvidia: tu clave gratis (sin tarjeta) en https://build.nvidia.com.
    # Límite de 40 peticiones/minuto en vez de tokens/minuto — mejor si Groq se queda corto con
-   # imágenes grandes. Deja vacía si usas otro proveedor.
+   # imágenes grandes. OJO: el Free Endpoint solo admite 1 imagen por petición (facturas de 1 página).
+   # Deja vacía si usas otro proveedor.
    NVIDIA_API_KEY=nvapi-tu_clave
-   NVIDIA_MODEL=meta/llama-4-scout-17b-16e-instruct
+   NVIDIA_MODEL=nvidia/llama-3.1-nemotron-nano-vl-8b-v1
 
    # Solo si LLM_PROVIDER=Local: dónde escucha tu servidor LLM y qué modelo cargar. qwen2.5-vl-7b
    # es el modelo de visión que hemos probado en LM Studio; puedes cargar otro modelo multimodal.
@@ -81,8 +82,11 @@ El proveedor se elige con `LLM_PROVIDER` en el **mismo `.env` de arriba** (un so
   sola página puede agotar el límite (ver [comparativa-llm-local.md](docs/comparativa-llm-local.md)).
 - **`LLM_PROVIDER=Nvidia`**: rellena `NVIDIA_API_KEY` (gratis, sin tarjeta, en
   [build.nvidia.com](https://build.nvidia.com)). Su límite gratuito es por **petición** (40/min), no
-  por token — mejor opción si Groq da error 413 "Request too large". Usa el mismo
-  `meta/llama-4-scout-17b-16e-instruct` que se evaluó en `docs/resultados-e1-f2.md`.
+  por token — mejor opción si Groq da error 413 "Request too large". Usa
+  `nvidia/llama-3.1-nemotron-nano-vl-8b-v1`, un modelo especializado en "document intelligence"
+  (OCR/extracción estructurada). **Límite del Free Endpoint: 1 imagen por petición** — vale para
+  facturas de 1 página; con varias páginas el comportamiento no está garantizado (mejor usar
+  Groq o Local en ese caso).
 - **`LLM_PROVIDER=Local`**: apunta `LLM_LOCAL_BASEURL` / `LLM_LOCAL_MODEL` a tu servidor y **deja
   las claves de Groq/Nvidia vacías**. Probado con **`qwen2.5-vl-7b`** (modelo de visión) en LM
   Studio — hay que activar **"Serve on Local Network"** (que escuche en `0.0.0.0`), o el contenedor
@@ -164,7 +168,7 @@ ClassificadorExtractorDocumentos/
 |---|---|
 | Backend | .NET 10 · Minimal hosting · Controllers REST |
 | Persistencia | SQL Server (LocalDB en dev) · EF Core (escritura) · Dapper (consultas del Consultor) |
-| LLM | API compatible OpenAI, intercambiable por configuración: **Groq** (Qwen3.6 27B), **Nvidia** (Llama 4 Scout) o **local** (LM Studio / Qwen2.5-VL) |
+| LLM | API compatible OpenAI, intercambiable por configuración: **Groq** (Qwen3.6 27B), **Nvidia** (Nemotron Nano VL) o **local** (LM Studio / Qwen2.5-VL) |
 | PDF → imagen | PDFtoImage / Pdfium (stack .NET nativo, sin microservicio Python) |
 | Frontend | Angular 21 (standalone) · PrimeNG 21 |
 | Tests | xUnit (155 tests unitarios) |

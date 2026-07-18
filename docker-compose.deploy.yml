@@ -38,8 +38,9 @@ services:
       Llm__Perfiles__Groq__Model: "${GROQ_MODEL:-qwen/qwen3.6-27b}"
       # Nvidia build.nvidia.com: gratis sin tarjeta, límite de 40 peticiones/minuto (no por token como
       # Groq) — mejor opción si las imágenes de las facturas son grandes. Clave en build.nvidia.com.
+      # OJO: el Free Endpoint solo admite 1 imagen por petición (vale para facturas de 1 página).
       Llm__Perfiles__Nvidia__ApiKey: "${NVIDIA_API_KEY:-}"
-      Llm__Perfiles__Nvidia__Model: "${NVIDIA_MODEL:-meta/llama-4-scout-17b-16e-instruct}"
+      Llm__Perfiles__Nvidia__Model: "${NVIDIA_MODEL:-nvidia/llama-3.1-nemotron-nano-vl-8b-v1}"
       # Para Local: URL del servidor. Si corre en el mismo PC que Docker, usa host.docker.internal.
       Llm__Perfiles__Local__BaseUrl: "${LLM_LOCAL_BASEURL:-http://host.docker.internal:1234/v1}"
       Llm__Perfiles__Local__Model: "${LLM_LOCAL_MODEL:-qwen/qwen2.5-vl-7b}"
