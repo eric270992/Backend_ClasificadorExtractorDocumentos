@@ -16,6 +16,7 @@ REGLAS ESTRICTAS:
 8. "confidencePorCampo": tu confianza real (0.0-1.0) en cada campo. Sé honesto: si un valor es borroso o ambiguo, baja la confianza. Campos ausentes → 0.0.
 9. La moneda en código ISO 4217 ("EUR", "USD", "GBP"...). Si no se indica, "EUR".
 10. Si el documento NO es una factura (albarán, presupuesto, otro documento), devuelve igualmente el JSON con todos los campos null y añade "esFactura": false en metadatos.
+11. "porcentajeIva" de cada línea: pon un número SOLO si el documento indica el % de IVA de ESA línea en concreto (columna "%IVA" o similar junto a la línea). Si la factura no desglosa el IVA por línea y solo lo indica en el pie/totales (p. ej. "IVA (21%):"), usa null en el porcentajeIva de TODAS las líneas — NUNCA 0 por defecto. Confundir "no indicado por línea" con "exento (0%)" es un error grave: el 0 debe reservarse para cuando el documento diga explícitamente que esa línea está exenta o al 0%.
 
 ESQUEMA JSON DE SALIDA (respeta nombres y tipos exactamente):
 {
@@ -39,7 +40,7 @@ ESQUEMA JSON DE SALIDA (respeta nombres y tipos exactamente):
       "descripcion": "string",
       "cantidad": number,
       "precioUnitario": number,
-      "porcentajeIva": number,
+      "porcentajeIva": "number | null (null si esta línea no indica su propio %IVA, ver regla 11)",
       "importeLinea": number
     }
   ],
