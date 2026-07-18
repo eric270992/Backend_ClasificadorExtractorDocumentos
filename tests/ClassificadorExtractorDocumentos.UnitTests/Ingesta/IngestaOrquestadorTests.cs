@@ -148,5 +148,11 @@ public class IngestaOrquestadorTests
             NifProveedor = nif;
             return Task.FromResult(42);
         }
+
+        public Task<bool> EliminarAsync(int facturaId, CancellationToken ct = default) =>
+            Task.FromResult(true);
+
+        public Task<ResultadoAprobacion> AprobarAsync(int facturaId, CancellationToken ct = default) =>
+            Task.FromResult(ResultadoAprobacion.Ok());
     }
 }

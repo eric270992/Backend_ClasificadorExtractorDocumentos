@@ -16,4 +16,18 @@ public interface IFacturaStagingRepository
         string? nifProveedor,
         string? nombreProveedor,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Eliminación lógica (soft delete): marca FechaEliminacion, nunca borra la fila.
+    /// Permite reprocesar (mismo proveedor+número) y una futura papelera. False si no existe.</summary>
+    Task<bool> EliminarAsync(int facturaId, CancellationToken cancellationToken = default);
+
+    /// <summary>Aprobación manual: solo válida si la factura está en RevisionHumana. Pasa a Validada
+    /// y registra FechaAprobacionManual. Falla si no existe o no está en ese estado.</summary>
+    Task<ResultadoAprobacion> AprobarAsync(int facturaId, CancellationToken cancellationToken = default);
+}
+
+public sealed record ResultadoAprobacion(bool Exito, string? Motivo)
+{
+    public static ResultadoAprobacion Ok() => new(true, null);
+    public static ResultadoAprobacion Fallo(string motivo) => new(false, motivo);
 }

@@ -4,11 +4,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClassificadorExtractorDocumentos.Infrastructure.Persistence;
 
-public class FacturaStagingRepository(DocFlowDbContext db) : IFacturaStagingRepository
+public class FacturaStagingRepository(DocFlowDbContext db, TimeProvider timeProvider) : IFacturaStagingRepository
 {
     public Task<bool> ExisteFacturaAsync(string nifEmisor, string numeroFactura, CancellationToken cancellationToken = default) =>
         db.FacturasStaging.AnyAsync(
-            f => f.NumeroFactura == numeroFactura && f.Proveedor != null && f.Proveedor.Nif == nifEmisor,
+            f => f.NumeroFactura == numeroFactura && f.Proveedor != null && f.Proveedor.Nif == nifEmisor
+                && f.FechaEliminacion == null,
             cancellationToken);
 
     public async Task<int> GuardarAsync(
@@ -42,5 +43,41 @@ public class FacturaStagingRepository(DocFlowDbContext db) : IFacturaStagingRepo
         await transaccion.CommitAsync(cancellationToken);
 
         return factura.Id;
+    }
+
+    public async Task<bool> EliminarAsync(int facturaId, CancellationToken cancellationToken = default)
+    {
+        var factura = await db.FacturasStaging.FirstOrDefaultAsync(f => f.Id == facturaId, cancellationToken);
+        if (factura is null)
+        {
+            return false;
+        }
+
+        factura.FechaEliminacion ??= timeProvider.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<ResultadoAprobacion> AprobarAsync(int facturaId, CancellationToken cancellationToken = default)
+    {
+        var factura = await db.FacturasStaging.FirstOrDefaultAsync(f => f.Id == facturaId, cancellationToken);
+        if (factura is null)
+        {
+            return ResultadoAprobacion.Fallo($"No existe ninguna factura con id {facturaId}.");
+        }
+        if (factura.FechaEliminacion is not null)
+        {
+            return ResultadoAprobacion.Fallo("La factura está eliminada.");
+        }
+        if (factura.Estado != EstadoFactura.RevisionHumana)
+        {
+            return ResultadoAprobacion.Fallo(
+                $"Solo se puede aprobar manualmente una factura en RevisionHumana (estado actual: {factura.Estado}).");
+        }
+
+        factura.Estado = EstadoFactura.Validada;
+        factura.FechaAprobacionManual = timeProvider.GetUtcNow().UtcDateTime;
+        await db.SaveChangesAsync(cancellationToken);
+        return ResultadoAprobacion.Ok();
     }
 }

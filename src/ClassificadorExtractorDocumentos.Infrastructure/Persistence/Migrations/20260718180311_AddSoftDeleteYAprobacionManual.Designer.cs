@@ -4,6 +4,7 @@ using ClassificadorExtractorDocumentos.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClassificadorExtractorDocumentos.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(DocFlowDbContext))]
-    partial class DocFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260718180311_AddSoftDeleteYAprobacionManual")]
+    partial class AddSoftDeleteYAprobacionManual
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

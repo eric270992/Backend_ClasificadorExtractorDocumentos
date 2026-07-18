@@ -13,6 +13,7 @@ public class FacturaConsultaService(DocFlowDbContext db) : IFacturaConsultaServi
     {
         return await db.FacturasStaging
             .AsNoTracking()
+            .Where(f => f.FechaEliminacion == null)
             .OrderByDescending(f => f.FechaIngesta)
             .Select(f => new FacturaResumen(
                 f.Id,
@@ -32,7 +33,7 @@ public class FacturaConsultaService(DocFlowDbContext db) : IFacturaConsultaServi
     {
         return await db.FacturasStaging
             .AsNoTracking()
-            .Where(f => f.Id == id)
+            .Where(f => f.Id == id && f.FechaEliminacion == null)
             .Select(f => new FacturaDetalle(
                 f.Id,
                 f.Proveedor != null ? new ProveedorResumen(f.Proveedor.Nif, f.Proveedor.Nombre) : null,
@@ -48,6 +49,7 @@ public class FacturaConsultaService(DocFlowDbContext db) : IFacturaConsultaServi
                 f.Estado.ToString(),
                 f.NivelExtraccion,
                 f.FechaIngesta,
+                f.FechaAprobacionManual,
                 f.Lineas
                     .OrderBy(l => l.NumLinea)
                     .Select(l => new LineaResumen(

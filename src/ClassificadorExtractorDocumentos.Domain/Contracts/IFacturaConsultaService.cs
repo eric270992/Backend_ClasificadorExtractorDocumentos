@@ -44,6 +44,7 @@ public sealed record FacturaDetalle(
     string Estado,
     byte NivelExtraccion,
     DateTime FechaIngesta,
+    DateTime? FechaAprobacionManual,
     IReadOnlyList<LineaResumen> Lineas,
     IReadOnlyList<IncidenciaResumen> Incidencias);
 

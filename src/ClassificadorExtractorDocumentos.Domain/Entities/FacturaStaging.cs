@@ -22,6 +22,14 @@ public class FacturaStaging
     public required string RutaPdfOriginal { get; set; }
     public DateTime FechaIngesta { get; set; }
 
+    /// <summary>Null = no eliminada. Con valor = eliminación lógica (soft delete), con la fecha/hora.
+    /// No se borra físicamente: permite reprocesar (mismo proveedor+número) y una futura papelera.</summary>
+    public DateTime? FechaEliminacion { get; set; }
+
+    /// <summary>Null = nunca aprobada a mano. Con valor = un humano confirmó manualmente una factura
+    /// en RevisionHumana, con la fecha/hora exacta (trazabilidad de quién decidió, cuándo).</summary>
+    public DateTime? FechaAprobacionManual { get; set; }
+
     public List<FacturaLinea> Lineas { get; set; } = [];
     public List<ValidacionIncidencia> Incidencias { get; set; } = [];
 }

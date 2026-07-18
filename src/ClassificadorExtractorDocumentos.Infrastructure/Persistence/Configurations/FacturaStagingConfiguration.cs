@@ -31,13 +31,17 @@ public class FacturaStagingConfiguration : IEntityTypeConfiguration<FacturaStagi
         builder.Property(f => f.NivelExtraccion).HasColumnType("tinyint");
         builder.Property(f => f.RutaPdfOriginal).HasMaxLength(500).IsRequired();
         builder.Property(f => f.FechaIngesta).HasDefaultValueSql("SYSUTCDATETIME()");
+        builder.Property(f => f.FechaEliminacion);
+        builder.Property(f => f.FechaAprobacionManual);
 
         // Único filtrado: protege contra duplicados vivos pero permite persistir los intentos
-        // Rechazados (DUPLICADO) con sus incidencias, como exige §2.3 ("incidencias siempre persistidas")
+        // Rechazados (DUPLICADO) con sus incidencias, como exige §2.3 ("incidencias siempre persistidas").
+        // Excluye también las eliminadas lógicamente: permite reprocesar (mismo proveedor+número)
+        // tras un soft delete sin chocar con el índice.
         builder.HasIndex(f => new { f.ProveedorId, f.NumeroFactura })
             .IsUnique()
             .HasDatabaseName("UQ_Factura")
-            .HasFilter("[ProveedorId] IS NOT NULL AND [Estado] <> N'Rechazada'");
+            .HasFilter("[ProveedorId] IS NOT NULL AND [Estado] <> N'Rechazada' AND [FechaEliminacion] IS NULL");
 
         builder.HasOne(f => f.Proveedor)
             .WithMany(p => p.Facturas)

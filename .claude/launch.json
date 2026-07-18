@@ -7,6 +7,13 @@
       "runtimeArgs": ["start"],
       "cwd": "C:/Users/eclota/source/repos_vscode/ClassificadorExtractorDocumentos",
       "port": 4200
+    },
+    {
+      "name": "docflow-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run"],
+      "cwd": "C:/Users/eclota/source/repos/ClassificadorExtractorDocumentos/src/ClassificadorExtractorDocumentos.Api",
+      "port": 5255
     }
   ]
 }
