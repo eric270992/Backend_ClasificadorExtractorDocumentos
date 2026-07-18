@@ -36,6 +36,10 @@ despliegue del proyecto.
    # Si usas el LLM local, deja esta línea vacía o bórrala.
    GROQ_API_KEY=gsk_tu_clave
 
+   # Opcional: Groq deprecia modelos de vez en cuando (https://console.groq.com/docs/deprecations).
+   # Si el modelo por defecto deja de existir, descomenta y pon el que recomiende Groq (debe soportar visión).
+   # GROQ_MODEL=qwen/qwen3.6-27b
+
    # Solo si LLM_PROVIDER=Local: dónde escucha tu servidor LLM y qué modelo cargar.
    # host.docker.internal = el mismo PC que Docker. Si el LLM está en otra máquina de la red,
    # pon su IP, p. ej. http://192.168.1.64:1234/v1

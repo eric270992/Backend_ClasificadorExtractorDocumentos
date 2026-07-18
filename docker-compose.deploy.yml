@@ -32,6 +32,9 @@ services:
       Llm__Proveedor: "${LLM_PROVIDER:-Groq}"
       # Vacía por defecto: si usas el LLM local no necesitas clave de Groq (no da aviso al arrancar).
       Llm__Perfiles__Groq__ApiKey: "${GROQ_API_KEY:-}"
+      # Groq deprecia modelos con cierta frecuencia (ver https://console.groq.com/docs/deprecations).
+      # Si el modelo por defecto deja de existir, sobreescribe GROQ_MODEL en el .env sin esperar una imagen nueva.
+      Llm__Perfiles__Groq__Model: "${GROQ_MODEL:-qwen/qwen3.6-27b}"
       # Para Local: URL del servidor. Si corre en el mismo PC que Docker, usa host.docker.internal.
       Llm__Perfiles__Local__BaseUrl: "${LLM_LOCAL_BASEURL:-http://host.docker.internal:1234/v1}"
       Llm__Perfiles__Local__Model: "${LLM_LOCAL_MODEL:-qwen/qwen2.5-vl-7b}"
