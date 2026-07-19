@@ -104,7 +104,9 @@ El proveedor se elige con `LLM_PROVIDER` en el **mismo `.env` de arriba** (un so
 2. **Extrae** los datos estructurados con un LLM multimodal (sin OCR clásico ni fine-tuning): emisor,
    receptor, número, fechas, líneas, IVA, totales… nunca inventa (campo ausente → null).
 3. **Valida** con 9 reglas de negocio (cuadres, coherencia de IVA, reverse charge, NIF, duplicados…) y
-   asigna un estado: `Validada`, `Revisión humana` o `Rechazada`.
+   asigna un estado: `Validada`, `Revisión humana` o `Rechazada`. Antes de validar, se autocorrige el
+   campo que el LLM peor adivina (si las líneas llevan IVA incluido o no) probando ambas
+   interpretaciones y quedándose con la que cuadra con los totales — ver [`docs/arquitectura.md`](docs/arquitectura.md) §5.5.
 4. **Guarda** la factura, líneas e incidencias de forma transaccional.
 5. **Responde preguntas en lenguaje natural** sobre las facturas, generando SQL seguro (solo `SELECT`,
    whitelist de tablas, `TOP 1000` forzado).
@@ -148,7 +150,7 @@ ClassificadorExtractorDocumentos/
 │       └── Controllers/                                  # DocumentosController, FacturasController, ConsultasController
 │
 ├── tests/
-│   └── ClassificadorExtractorDocumentos.UnitTests/        # 161 tests xUnit (reglas, parsers, SQL-guard...)
+│   └── ClassificadorExtractorDocumentos.UnitTests/        # 162 tests xUnit (reglas, parsers, SQL-guard...)
 │
 ├── docs/                                                  # Documentación, dataset de prueba y presentación
 │   ├── installation-guide.md · arquitectura.md · ...
@@ -171,7 +173,8 @@ ClassificadorExtractorDocumentos/
 | LLM | API compatible OpenAI, intercambiable por configuración: **Groq** (Qwen3.6 27B), **Nvidia** (Nemotron Nano VL) o **local** (LM Studio / Qwen2.5-VL) |
 | PDF → imagen | PDFtoImage / Pdfium (stack .NET nativo, sin microservicio Python) |
 | Frontend | Angular 21 (standalone) · PrimeNG 21 |
-| Tests | xUnit (161 tests unitarios) |
+| Logging | Serilog (consola + fichero con rotación diaria, persistente en volumen Docker) |
+| Tests | xUnit (162 tests unitarios) |
 
 ## 🚀 Cómo ejecutarlo
 
@@ -239,7 +242,7 @@ Añadir un proveedor nuevo es añadir un bloque a `Perfiles` — cero código. V
 dotnet test
 ```
 
-Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 161 tests), **integración** con LLM mockeado (E2) y
+Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 162 tests), **integración** con LLM mockeado (E2) y
 **evals** contra ground truth con LLM real (E2). El dataset de prueba está en `docs/datasets/`.
 
 ## 📊 Estado y hoja de ruta

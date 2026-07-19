@@ -199,13 +199,17 @@ record ContextoValidacion(
     decimal ToleranciaCuadre);     // ← ±0,02 € de la config
 ```
 
+No se construye directamente: el orquestador usa la factoría estática `ContextoValidacion.Crear(...)`,
+que antes de nada aplica la autocorrección de `LineasIncluyenIva` (ver 5.5) sobre la factura. Así todas
+las reglas ven ya la interpretación correcta, sin que cada una tenga que lidiar con la ambigüedad.
+
 Las 9 reglas (en `Validacion/Reglas/`), con su severidad:
 
 | Clase | Código | Severidad | Comprueba |
 |---|---|---|---|
 | `ReglaCuadreLineas` | `CUADRE_LINEAS` | Revisión | Σ(líneas) ≈ base imponible |
 | `ReglaCuadreTotal` | `CUADRE_TOTAL` | Revisión | base + IVA − IRPF ≈ total |
-| `ReglaIvaCoherente` | `IVA_COHERENTE` | Revisión | cuota IVA ≈ Σ(base·%IVA) |
+| `ReglaIvaCoherente` | `IVA_COHERENTE` | Revisión | cuota IVA ≈ Σ(base·%IVA) por línea; si ese cálculo da 0 pero la cuota declarada no lo es (plantilla sin %IVA por línea), cae al tipo global en vez de reportar un falso mismatch |
 | `ReglaReverseCharge` | `REVERSE_CHARGE_OK` | Info | reverse charge → IVA debe ser 0 |
 | `ReglaNifFormato` | `NIF_FORMATO` | Revisión | formato de NIF válido (delega a `Nif`) |
 | `ReglaCamposObligatorios` | `CAMPOS_OBLIGATORIOS` | **Rechazo** | nif, número, fecha, total presentes |
@@ -297,6 +301,31 @@ Beneficio concreto: el día que necesitemos derivar la base de la plantilla B (q
 total con IVA), el método `linea.BaseImponible(incluyeIva: true)` **ya existe y está testeado**, no
 hace falta reescribir aritmética fiscal en ningún otro sitio.
 
+**La pregunta más difícil que el modelo se hace a sí mismo: ¿las líneas llevan IVA incluido?**
+
+`"lineasIncluyenIva"` es un booleano que el LLM tiene que rellenar, y en la práctica es el campo que
+peor adivina (confirmado con varios proveedores: Nvidia y el modelo local se equivocan aquí con
+frecuencia, no es un problema de un modelo concreto). En vez de confiar ciegamente en lo que declaró,
+`FacturaExtraida` se hace la pregunta dos veces y se queda con la respuesta que cuadra:
+
+```csharp
+factura.LineasIncluyenIvaEfectivo(toleranciaCuadre)
+// 1. ¿Lo declarado (LineasIncluyenIva) hace que Σlíneas cuadre con la base/total Y que la
+//    cuota-por-líneas cuadre con la cuota declarada? → me quedo con eso.
+// 2. Si no, ¿lo CONTRARIO (factura with { LineasIncluyenIva = !LineasIncluyenIva }) cuadra? → uso eso.
+// 3. Si ninguna de las dos cuadra, no hay señal suficiente: se respeta lo declarado.
+```
+
+Es el mismo principio que un humano aplicaría revisando la factura a ojo ("si asumo que el IVA va
+incluido, ¿el total sale? no... ¿y si asumo que no?"), convertido en un método puro y testeado
+(`FacturaExtraidaTests`). El orquestador lo aplica una única vez, en `ContextoValidacion.Crear(...)`
+(ver 5.3), así que todas las reglas de validación ya trabajan sobre la interpretación corregida.
+
+Otro caso parecido, más simple: `porcentajeIva` a veces llega como fracción (`0.21`) en vez de
+porcentaje (`21`) — ningún tipo de IVA real está entre 0 y 1, así que `LineaExtraida` normaliza
+internamente (`PorcentajeIvaNormalizado`) multiplicando ×100 cuando detecta ese rango, antes de
+calcular nada.
+
 ### 5.6 `Parsers/` — normalizadores puros
 
 `NumeroParser` ("1.234,56 €" → `1234.56m`) y `FechaParser` ("5 de julio 2026" → "2026-07-05"). Son
@@ -317,7 +346,10 @@ Cada "agente" del SPEC es una clase aquí:
 
 - **`ExtractorAgent`** (`Extraccion/`): coge las imágenes, carga el prompt versionado, llama
   al `ILlmClient`, y pasa la respuesta al `FacturaExtraidaParser`. Si el JSON vuelve mal, hace **1
-  reintento con feedback**. Devuelve un `ResultadoExtraccion`.
+  reintento con feedback** (le devuelve el error de parseo al modelo). Si el reintento también falla,
+  loguea la respuesta cruda del LLM (antes solo se conservaba el mensaje de la excepción de parseo, no
+  el texto real — imprescindible para diagnosticar sin tener que reproducir el fallo). Devuelve un
+  `ResultadoExtraccion`.
 - **`FacturaExtraidaParser`** (`Extraccion/`): convierte el texto del LLM en un `FacturaExtraida`
   válido. Es **tolerante** (acepta JSON envuelto en texto o en ```` ```json ````), y aplica la red de
   seguridad del contrato: campo ausente → null + confianza 0, nunca inventar.
@@ -349,7 +381,10 @@ IngestaDocumentoService  →  ExtractorAgent  →  (consulta duplicat)  →  Val
 - **`PromptLoader`**: carga los prompts versionados (ficheros `.md` incrustados en el assembly) y los
   separa en parte de sistema / usuario.
 - **`LlmRespuesta`**: localiza el primer objeto JSON dentro de la respuesta del LLM (compartido entre
-  Extractor y Consultor).
+  Extractor y Consultor), y **repara sumas sin resolver que el modelo deja como valor** (p. ej.
+  `"baseImponible": 255.00 + 189.90 + 190.00` en vez del resultado ya calculado — visto con el
+  proveedor Nvidia). Sin esto el JSON entero es inválido y se pierde toda la extracción por un solo
+  campo; con la reparación, se resuelve la suma antes de parsear.
 - **`Prompts/*.md`**: los prompts como ficheros versionados (`extraccion-generica.md`,
   `consultor-sql.md`). Se versionan como código.
 
@@ -386,7 +421,11 @@ hace commit. Si cualquier paso peta, **nada se guarda** (todo o nada).
 
 - **`Program.cs`**: arranca la web, lee el parámetro `--llm`, registra las capas
   (`AddApplication()` + `AddInfrastructure()`), y es **el único sitio donde todas las piezas se conectan**
-  (donde se dice "esta interfaz → esta implementación"). Esto se llama **raíz de composición**.
+  (donde se dice "esta interfaz → esta implementación"). Esto se llama **raíz de composición**. También
+  configura Serilog (`UseSerilog`, leyendo la sección `Serilog` de `appsettings.json`) como logger de
+  toda la aplicación — consola + fichero con rotación diaria, para que los logs sobrevivan a un
+  `docker compose down`/`up` del contenedor (antes se perdían al recrearlo, lo que dificultó
+  diagnosticar el bug de la suma sin resolver de más arriba).
 - **`Controllers/`**:
   - `DocumentosController`: `POST /documentos` (pipeline completo o solo ingesta con `?procesar=false`),
     `POST /documentos/{id}/extraccion` (extracción sin persistir, para depurar/evaluar).
@@ -538,7 +577,7 @@ lo que nos deja cambiar de LLM o añadir MAF sin romper nada.
 
 ## 12. Qué nos aporta todo esto (resumen del "por qué")
 
-1. **Se puede probar sin infraestructura.** Los 157 tests unitarios corren sin base de datos ni LLM
+1. **Se puede probar sin infraestructura.** Los 162 tests unitarios corren sin base de datos ni LLM
    reales, porque la lógica (reglas, parsers, orquestador, guard) depende de interfaces que sustituimos
    por dobles de prueba. En N capas clásico esto es mucho más difícil porque la BLL arrastra la DAL.
 
