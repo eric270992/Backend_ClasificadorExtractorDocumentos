@@ -7,6 +7,9 @@ obj/
 ## Datos de ingesta (no versionados; se generan en runtime)
 **/App_Data/
 
+## Logs de Serilog (no versionados; se generan en runtime)
+**/logs/
+
 ## Angular (E1-F5)
 node_modules/
 dist/

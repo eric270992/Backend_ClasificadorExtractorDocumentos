@@ -2,6 +2,7 @@ using ClassificadorExtractorDocumentos.Application;
 using ClassificadorExtractorDocumentos.Infrastructure;
 using ClassificadorExtractorDocumentos.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace ClassificadorExtractorDocumentos
 {
@@ -17,6 +18,14 @@ namespace ClassificadorExtractorDocumentos
                 ["--llm"] = "Llm:Proveedor",
                 ["--db"] = "Database:Proveedor",
             });
+
+            // Serilog sustituye al logger por defecto; toda la configuración (nivel, sinks
+            // Console/File) vive en la sección "Serilog" de appsettings.json — cero código para
+            // ajustarla, igual que los proveedores LLM en "Llm:Perfiles".
+            builder.Host.UseSerilog((context, services, loggerConfig) => loggerConfig
+                .ReadFrom.Configuration(context.Configuration)
+                .ReadFrom.Services(services)
+                .Enrich.FromLogContext());
 
             // Add services to the container.
 
@@ -59,6 +68,8 @@ namespace ClassificadorExtractorDocumentos
                 using var scope = app.Services.CreateScope();
                 scope.ServiceProvider.GetRequiredService<DocFlowDbContext>().Database.Migrate();
             }
+
+            app.UseSerilogRequestLogging();
 
             app.UseHttpsRedirection();
 
