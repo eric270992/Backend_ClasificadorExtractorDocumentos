@@ -51,6 +51,7 @@ services:
       - "5255:8080"
     volumes:
       - docflow-files:/data/documentos
+      - docflow-logs:/app/logs
     depends_on:
       db:
         condition: service_healthy
@@ -65,3 +66,4 @@ services:
 volumes:
   docflow-db:
   docflow-files:
+  docflow-logs:
