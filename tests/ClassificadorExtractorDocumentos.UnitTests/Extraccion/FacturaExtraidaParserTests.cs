@@ -119,6 +119,25 @@ public class FacturaExtraidaParserTests
     }
 
     [Fact]
+    public void Parse_resuelve_suma_sin_evaluar_dejada_por_el_modelo()
+    {
+        // Bug real visto con Nvidia (nemotron-nano-vl-8b): en vez del total ya calculado, el
+        // modelo escribe la operación, lo que rompe el JSON ('+' is invalid after a value).
+        var json = """
+            {
+              "factura": { "numero": "F-1" },
+              "totales": { "baseImponible": 255.00 + 189.90 + 190.00, "total": 768.23 },
+              "metadatos": {}
+            }
+            """;
+
+        var resultado = FacturaExtraidaParser.Parse(json);
+
+        Assert.True(resultado.Exito);
+        Assert.Equal(634.90m, resultado.Factura!.Totales.BaseImponible);
+    }
+
+    [Fact]
     public void Parse_moneda_ausente_por_defecto_eur()
     {
         var json = """{ "factura": { "numero": "F-1" }, "metadatos": {} }""";

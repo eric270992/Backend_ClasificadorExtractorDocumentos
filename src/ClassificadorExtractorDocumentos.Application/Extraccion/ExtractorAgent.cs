@@ -1,5 +1,6 @@
 using ClassificadorExtractorDocumentos.Application.Prompts;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace ClassificadorExtractorDocumentos.Application.Extraccion;
 
@@ -8,7 +9,7 @@ namespace ClassificadorExtractorDocumentos.Application.Extraccion;
 /// versionado y parsea la respuesta. JSON inválido → 1 reintento con feedback; si vuelve a
 /// fallar, resultado de error controlado.
 /// </summary>
-public class ExtractorAgent(ILlmClient llmClient)
+public class ExtractorAgent(ILlmClient llmClient, ILogger<ExtractorAgent> logger)
 {
     /// <summary>Valor de <c>FacturasStaging.NivelExtraccion</c> para extracción genérica (proveedor nuevo/
     /// desconocido, sin ejemplos few-shot). El nivel 2 (few-shot, proveedor ya conocido) llega en Etapa 2.</summary>
@@ -49,9 +50,16 @@ public class ExtractorAgent(ILlmClient llmClient)
             new LlmPeticion(sistema, usuarioConFeedback, paginasPng), cancellationToken);
 
         parseo = FacturaExtraidaParser.Parse(respuesta);
-        return parseo.Exito
-            ? ResultadoExtraccion.Ok(parseo.Factura!, parseo.JsonOriginal!, reintentos: 1)
-            : ResultadoExtraccion.Fallo($"Extracción fallida tras 1 reintento: {parseo.Error}");
+        if (parseo.Exito)
+        {
+            return ResultadoExtraccion.Ok(parseo.Factura!, parseo.JsonOriginal!, reintentos: 1);
+        }
+
+        // Sin esto, el texto crudo del LLM se pierde: solo queda el mensaje de la excepción de
+        // parseo (p. ej. posición del carácter inválido), inútil para diagnosticar el problema real.
+        logger.LogWarning("Extracción fallida tras 1 reintento ({Error}). Respuesta cruda del LLM: {Respuesta}",
+            parseo.Error, respuesta);
+        return ResultadoExtraccion.Fallo($"Extracción fallida tras 1 reintento: {parseo.Error}");
     }
 
 }

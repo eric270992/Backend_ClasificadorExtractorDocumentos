@@ -20,6 +20,7 @@ public static class FacturaExtraidaParser
         {
             return ResultadoParseo.Fallo("La respuesta no contiene ningún objeto JSON.");
         }
+        json = LlmRespuesta.ResolverSumasSinEvaluar(json);
 
         JsonDocument doc;
         try
