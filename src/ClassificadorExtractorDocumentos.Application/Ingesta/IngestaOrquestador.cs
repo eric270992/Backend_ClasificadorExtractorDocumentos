@@ -27,7 +27,7 @@ public class IngestaOrquestador(
         // 2. Extracción (nivel 3 genérico en E1)
         var imagenes = await ingestaService.ObtenerImagenesAsync(documento.Id, cancellationToken)
             ?? throw new InvalidOperationException($"Documento {documento.Id} recién ingestado sin imágenes.");
-        var extraccion = await extractorAgent.ExtraerAsync(imagenes, cancellationToken);
+        var extraccion = await extractorAgent.ExtraerAsync(imagenes, documento.TextoPdf, cancellationToken);
 
         if (!extraccion.Exito)
         {

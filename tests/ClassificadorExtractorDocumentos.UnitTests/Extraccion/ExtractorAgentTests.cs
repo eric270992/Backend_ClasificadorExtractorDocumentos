@@ -51,6 +51,40 @@ public class ExtractorAgentTests
         Assert.Contains("reintento", resultado.Error);
     }
 
+    [Fact]
+    public async Task Extraer_con_texto_de_pdf_lo_incluye_en_el_prompt()
+    {
+        var llm = new LlmClientFake(JsonValido);
+        var agente = new ExtractorAgent(llm, NullLogger<ExtractorAgent>.Instance);
+
+        await agente.ExtraerAsync([[1, 2, 3]], textoPdf: "IVA (21%): 89,25");
+
+        Assert.Contains("IVA (21%): 89,25", llm.UltimoPromptUsuario);
+    }
+
+    [Fact]
+    public async Task Extraer_sin_texto_de_pdf_no_altera_el_prompt()
+    {
+        var llm = new LlmClientFake(JsonValido);
+        var agente = new ExtractorAgent(llm, NullLogger<ExtractorAgent>.Instance);
+
+        await agente.ExtraerAsync([[1, 2, 3]]);
+
+        Assert.DoesNotContain("Texto extraído directamente del PDF", llm.UltimoPromptUsuario);
+    }
+
+    [Fact]
+    public async Task Extraer_con_texto_de_pdf_lo_mantiene_en_el_reintento()
+    {
+        var llm = new LlmClientFake("esto no es json", JsonValido);
+        var agente = new ExtractorAgent(llm, NullLogger<ExtractorAgent>.Instance);
+
+        await agente.ExtraerAsync([[1, 2, 3]], textoPdf: "IVA (21%): 89,25");
+
+        Assert.Contains("IVA (21%): 89,25", llm.UltimoPromptUsuario);
+        Assert.Contains("no cumplía el contrato", llm.UltimoPromptUsuario);
+    }
+
     private sealed class LlmClientFake(params string[] respuestas) : ILlmClient
     {
         private int _indice;

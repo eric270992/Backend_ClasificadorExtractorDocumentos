@@ -20,7 +20,7 @@ internal sealed partial class ExtractorExecutor(ExtractorAgent agente, ILogger l
     private async ValueTask<ExtraccionRealizada> HandleAsync(DocumentoParaProcesar msg, IWorkflowContext context)
     {
         logger.LogInformation("[{CorrelationId}] Extracción iniciada", msg.Documento.Id);
-        var extraccion = await agente.ExtraerAsync(msg.Imagenes);
+        var extraccion = await agente.ExtraerAsync(msg.Imagenes, msg.Documento.TextoPdf);
 
         if (extraccion.Exito)
         {

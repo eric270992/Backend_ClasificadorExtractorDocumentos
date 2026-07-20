@@ -9,6 +9,7 @@ namespace ClassificadorExtractorDocumentos.Application.Ingesta;
 /// </summary>
 public class IngestaDocumentoService(
     IPdfToImageConverter pdfToImageConverter,
+    IPdfTextExtractor pdfTextExtractor,
     IImagenNormalizer imagenNormalizer,
     IDocumentStorage documentStorage)
 {
@@ -21,8 +22,15 @@ public class IngestaDocumentoService(
         var formato = DeteccionFormato.Detectar(bytes);
 
         IReadOnlyList<byte[]> paginasPng;
+        string? textoPdf = null;
         if (formato == FormatoDocumento.Pdf)
         {
+            // Si el PDF tiene capa de texto (nacido digital), se extrae como referencia adicional
+            // para el Extractor. Un PDF escaneado/fotografiado no la tiene: textoPdf queda en null
+            // y el pipeline sigue solo con visión, como hasta ahora. Stream propio (a partir de los
+            // bytes ya leídos): el convertidor a imagen cierra el suyo (leaveOpen: false internamente).
+            textoPdf = await pdfTextExtractor.ExtraerTextoAsync(new MemoryStream(bytes), cancellationToken);
+
             buffer.Position = 0;
             paginasPng = await pdfToImageConverter.ConvertToPngPagesAsync(buffer, cancellationToken);
         }
@@ -40,7 +48,7 @@ public class IngestaDocumentoService(
         var (rutaOriginal, rutasImagenes) = await documentStorage.GuardarDocumentoAsync(
             documentoId, bytes, formato.Extension(), paginasPng, cancellationToken);
 
-        return new DocumentoIngestado(documentoId, rutaOriginal, rutasImagenes);
+        return new DocumentoIngestado(documentoId, rutaOriginal, rutasImagenes, textoPdf);
     }
 
     public Task<IReadOnlyList<byte[]>?> ObtenerImagenesAsync(Guid documentoId, CancellationToken cancellationToken = default) =>

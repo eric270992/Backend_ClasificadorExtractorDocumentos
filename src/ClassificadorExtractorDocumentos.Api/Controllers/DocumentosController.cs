@@ -84,7 +84,7 @@ public class DocumentosController(
             return NotFound($"No existe ningún documento con id {id}.");
         }
 
-        var resultado = await extractorAgent.ExtraerAsync(imagenes, cancellationToken);
+        var resultado = await extractorAgent.ExtraerAsync(imagenes, textoPdf: null, cancellationToken);
 
         return resultado.Exito
             ? Ok(new { resultado.Factura, resultado.Reintentos })

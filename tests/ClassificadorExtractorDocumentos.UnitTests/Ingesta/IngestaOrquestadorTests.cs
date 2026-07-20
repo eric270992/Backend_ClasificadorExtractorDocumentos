@@ -27,7 +27,8 @@ public class IngestaOrquestadorTests
 
     private static IngestaOrquestador CrearOrquestador(string respuestaLlm, RepositorioFake repo)
     {
-        var ingesta = new IngestaDocumentoService(new ConversorFake(), new NormalizerFake(), new StorageFake());
+        var ingesta = new IngestaDocumentoService(
+            new ConversorFake(), new TextExtractorFake(), new NormalizerFake(), new StorageFake());
         var extractor = new ExtractorAgent(new LlmFake(respuestaLlm), NullLogger<ExtractorAgent>.Instance);
         var validador = new ValidadorAgent(
         [
@@ -106,6 +107,12 @@ public class IngestaOrquestadorTests
     {
         public Task<IReadOnlyList<byte[]>> ConvertToPngPagesAsync(Stream pdfStream, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<byte[]>>([[1, 2, 3]]);
+    }
+
+    private sealed class TextExtractorFake : IPdfTextExtractor
+    {
+        public Task<string?> ExtraerTextoAsync(Stream pdfStream, CancellationToken ct = default) =>
+            Task.FromResult<string?>(null);
     }
 
     private sealed class NormalizerFake : IImagenNormalizer

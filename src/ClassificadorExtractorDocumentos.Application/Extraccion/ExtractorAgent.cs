@@ -23,14 +23,18 @@ public class ExtractorAgent(ILlmClient llmClient, ILogger<ExtractorAgent> logger
     private static readonly Lazy<(string Sistema, string Usuario)> Prompt =
         new(() => PromptLoader.Cargar("extraccion-generica.md"));
 
-    public async Task<ResultadoExtraccion> ExtraerAsync(IReadOnlyList<byte[]> paginasPng, CancellationToken cancellationToken = default)
+    /// <param name="textoPdf">Texto embebido del PDF, si lo tiene (ver <see cref="Domain.Contracts.IPdfTextExtractor"/>).
+    /// Null en documentos escaneados/fotografiados: el modelo trabaja solo con las imágenes, como antes.</param>
+    public async Task<ResultadoExtraccion> ExtraerAsync(
+        IReadOnlyList<byte[]> paginasPng, string? textoPdf = null, CancellationToken cancellationToken = default)
     {
         if (paginasPng.Count > MaxPaginasPorPeticion)
         {
             paginasPng = paginasPng.Take(MaxPaginasPorPeticion).ToList();
         }
 
-        var (sistema, usuario) = Prompt.Value;
+        var (sistema, usuarioBase) = Prompt.Value;
+        var usuario = ConTextoPdf(usuarioBase, textoPdf);
 
         var respuesta = await llmClient.CompletarAsync(
             new LlmPeticion(sistema, usuario, paginasPng), cancellationToken);
@@ -61,6 +65,16 @@ public class ExtractorAgent(ILlmClient llmClient, ILogger<ExtractorAgent> logger
             parseo.Error, respuesta);
         return ResultadoExtraccion.Fallo($"Extracción fallida tras 1 reintento: {parseo.Error}");
     }
+
+    /// <summary>Si el PDF tiene texto embebido, se lo damos al modelo como referencia: leer un número
+    /// en texto plano es mucho más fiable que leerlo en la imagen (ver bug de porcentajes/importes
+    /// mal leídos). Las imágenes siguen enviándose igual, para la estructura visual (qué es línea,
+    /// qué es cabecera/pie).</summary>
+    private static string ConTextoPdf(string usuarioBase, string? textoPdf) =>
+        string.IsNullOrWhiteSpace(textoPdf)
+            ? usuarioBase
+            : $"{usuarioBase}\n\nTexto extraído directamente del PDF (más fiable que leerlo en la imagen " +
+              $"para números, porcentajes e importes — úsalo como referencia):\n---\n{textoPdf}\n---";
 
 }
 

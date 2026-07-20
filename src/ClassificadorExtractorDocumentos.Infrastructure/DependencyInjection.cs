@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.Configure<LlmOptions>(perfil);
 
         services.AddSingleton<IPdfToImageConverter, PdfiumPdfToImageConverter>();
+        services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
         services.AddSingleton<IImagenNormalizer, Imagen.SkiaImagenNormalizer>();
         services.AddSingleton<IDocumentStorage, FileSystemDocumentStorage>();
         services.AddScoped<IFacturaStagingRepository, FacturaStagingRepository>();
