@@ -104,9 +104,11 @@ El proveedor se elige con `LLM_PROVIDER` en el **mismo `.env` de arriba** (un so
 2. **Extrae** los datos estructurados con un LLM multimodal (sin OCR clásico ni fine-tuning): emisor,
    receptor, número, fechas, líneas, IVA, totales… nunca inventa (campo ausente → null).
 3. **Valida** con 9 reglas de negocio (cuadres, coherencia de IVA, reverse charge, NIF, duplicados…) y
-   asigna un estado: `Validada`, `Revisión humana` o `Rechazada`. Antes de validar, se autocorrige el
-   campo que el LLM peor adivina (si las líneas llevan IVA incluido o no) probando ambas
-   interpretaciones y quedándose con la que cuadra con los totales — ver [`docs/arquitectura.md`](docs/arquitectura.md) §5.5.
+   asigna un estado: `Validada`, `Revisión humana` o `Rechazada`. Antes de validar, una capa de
+   **autocorrección** sanea lo que el LLM peor adivina: si las líneas llevan IVA incluido o no (probando
+   ambas interpretaciones), o el %IVA global cuando el modelo no lo captura pero sí extrae cuota y base
+   (deduciéndolo solo si es un tipo real). Así una extracción imperfecta acaba validada en vez de en
+   revisión siempre que sea deducible con certeza — ver [`docs/arquitectura.md`](docs/arquitectura.md) §5.3 y §5.5.
 4. **Guarda** la factura, líneas e incidencias de forma transaccional.
 5. **Responde preguntas en lenguaje natural** sobre las facturas, generando SQL seguro (solo `SELECT`,
    whitelist de tablas, `TOP 1000` forzado).
@@ -150,7 +152,7 @@ ClassificadorExtractorDocumentos/
 │       └── Controllers/                                  # DocumentosController, FacturasController, ConsultasController
 │
 ├── tests/
-│   └── ClassificadorExtractorDocumentos.UnitTests/        # 162 tests xUnit (reglas, parsers, SQL-guard...)
+│   └── ClassificadorExtractorDocumentos.UnitTests/        # 172 tests xUnit (reglas, parsers, SQL-guard...)
 │
 ├── docs/                                                  # Documentación, dataset de prueba y presentación
 │   ├── installation-guide.md · arquitectura.md · ...
@@ -174,7 +176,7 @@ ClassificadorExtractorDocumentos/
 | PDF → imagen | PDFtoImage / Pdfium (stack .NET nativo, sin microservicio Python) |
 | Frontend | Angular 21 (standalone) · PrimeNG 21 |
 | Logging | Serilog (consola + fichero con rotación diaria, persistente en volumen Docker) |
-| Tests | xUnit (162 tests unitarios) |
+| Tests | xUnit (172 tests unitarios) |
 
 ## 🚀 Cómo ejecutarlo
 
@@ -242,7 +244,7 @@ Añadir un proveedor nuevo es añadir un bloque a `Perfiles` — cero código. V
 dotnet test
 ```
 
-Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 162 tests), **integración** con LLM mockeado (E2) y
+Tres capas previstas (SPEC §5): **unitarios** (E1, ✅ 172 tests), **integración** con LLM mockeado (E2) y
 **evals** contra ground truth con LLM real (E2). El dataset de prueba está en `docs/datasets/`.
 
 ## 📊 Estado y hoja de ruta

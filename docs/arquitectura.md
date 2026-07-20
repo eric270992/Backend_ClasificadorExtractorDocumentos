@@ -209,13 +209,21 @@ Las 9 reglas (en `Validacion/Reglas/`), con su severidad:
 |---|---|---|---|
 | `ReglaCuadreLineas` | `CUADRE_LINEAS` | Revisión | Σ(líneas) ≈ base imponible |
 | `ReglaCuadreTotal` | `CUADRE_TOTAL` | Revisión | base + IVA − IRPF ≈ total |
-| `ReglaIvaCoherente` | `IVA_COHERENTE` | Revisión | cuota IVA ≈ Σ(base·%IVA) por línea; si ese cálculo da 0 pero la cuota declarada no lo es (plantilla sin %IVA por línea), cae al tipo global en vez de reportar un falso mismatch |
+| `ReglaIvaCoherente` | `IVA_COHERENTE` | Revisión | cuota IVA ≈ Σ(base·%IVA) por línea; si no hay %IVA por línea, usa el tipo global **declarado o deducido de cuota/base** (ver 5.5); solo marca "no verificable" si no hay forma de atar la cuota a ningún tipo real |
 | `ReglaReverseCharge` | `REVERSE_CHARGE_OK` | Info | reverse charge → IVA debe ser 0 |
 | `ReglaNifFormato` | `NIF_FORMATO` | Revisión | formato de NIF válido (delega a `Nif`) |
 | `ReglaCamposObligatorios` | `CAMPOS_OBLIGATORIOS` | **Rechazo** | nif, número, fecha, total presentes |
 | `ReglaConfidenceMinima` | `CONFIDENCE_MINIMA` | Revisión | ningún campo obligatorio con confianza < 0,7 |
 | `ReglaFechaRazonable` | `FECHA_RAZONABLE` | Revisión | fecha ni futura ni de hace >10 años |
 | `ReglaDuplicado` | `DUPLICADO` | **Rechazo** | (proveedor + número) ya existe |
+
+> **¿Son solo 9 "validaciones"?** Sí, hay exactamente 9 **reglas** (`IReglaValidacion`), y esa cifra es
+> estable: una regla es una *decisión de política* (qué severidad, qué mensaje). Pero conviven con una
+> **segunda capa que ha ido creciendo**: la de **autocorrección/deducción** dentro de `FacturaExtraida`
+> (sección 5.5). Esa capa no añade reglas nuevas; hace que las 9 existentes trabajen sobre datos ya
+> saneados (flag de IVA corregido, %IVA deducido, sumas sin resolver reparadas). Por eso "parece que hay
+> más validaciones" aunque el número de reglas no cambie: lo que aumenta es la inteligencia *previa* a
+> las reglas, no las reglas.
 
 **Punto clave del refactor reciente**: estas reglas solo contienen **política** (qué severidad, qué
 mensaje), no **cálculo**. Cuando una regla necesita saber "cuánto suman las líneas" o "cuál es el total
@@ -292,6 +300,8 @@ Este es el resultado del refactor "anti-anemia". La idea en una frase:
 factura.SumaLineas()                    // Σ importes de línea (o null si falta alguno)
 factura.ImporteObjetivoLineas()         // base, o base+IVA si las líneas llevan IVA
 factura.CuotaIvaCalculadaPorLineas()    // Σ (base_línea · %IVA)
+factura.CuotaIvaEsperadaPorTipoGlobal() // cuota esperada aplicando el %IVA global (declarado o deducido)
+factura.PorcentajeIvaGlobalEfectivo()   // %IVA global: el declarado, o el deducido de cuota/base si es un tipo real
 factura.CamposObligatoriosAusentes()    // ["emisor.nif", "totales.total"...]
 totales.TotalCalculado                  // base + IVA − IRPF
 linea.BaseImponible(incluyeIva)         // deriva la base de un importe con IVA incluido
@@ -325,6 +335,31 @@ Otro caso parecido, más simple: `porcentajeIva` a veces llega como fracción (`
 porcentaje (`21`) — ningún tipo de IVA real está entre 0 y 1, así que `LineaExtraida` normaliza
 internamente (`PorcentajeIvaNormalizado`) multiplicando ×100 cuando detecta ese rango, antes de
 calcular nada.
+
+**Deducir el %IVA global cuando el modelo no lo captura.** Un caso frecuente con modelos pequeños: el
+pie de factura pone "IVA (21%): 89,25" pero el modelo rellena bien la cuota (89,25) y la base (425) y en
+cambio deja `totales.porcentajeIva` en null (no "ve" el 21). `PorcentajeIvaGlobalEfectivo()` lo recupera:
+
+```csharp
+factura.PorcentajeIvaGlobalEfectivo()
+// 1. Si totales.porcentajeIva viene declarado → ese.
+// 2. Si no, deduce cuota/base (89,25/425 = 21%) y lo acepta SOLO si coincide (±0,5 pp) con un
+//    tipo real español (0/4/10/21). Si no cae en ninguno (base o cuota mal extraídas) → null.
+```
+
+La clave de que **no sea circular**: solo se acepta el % deducido si es un tipo fiscal real. Un cociente
+raro (p. ej. 80/425 = 18,8%) devuelve null y la factura sigue yendo a revisión, que es lo correcto: ese
+18,8% es la pista de que algo se extrajo mal. Con esto, el caso real `plantilla_d_05` (TL-2026-0243) pasó
+de `RevisionHumana` a `Validada` sin tocar el modelo ni el prompt.
+
+**Reparar operaciones sin resolver.** A veces el modelo "muestra el cálculo" en vez del resultado
+(`"baseImponible": 255 + 189 + 190`), lo que rompe el JSON. `LlmRespuesta.ResolverSumasSinEvaluar`
+detecta esas sumas (solo tras `:` y antes de `,`/`}`/`]`, nunca dentro de una cadena) y las resuelve
+antes de parsear, en vez de perder toda la extracción por un campo.
+
+**En conjunto**, estos métodos son la "segunda capa" de la que habla el recuadro de 5.3: no son reglas,
+son el saneamiento que corre *antes* de las reglas para que una extracción imperfecta de un modelo
+gratuito acabe, siempre que sea deducible con certeza, en una factura validada en vez de en revisión.
 
 ### 5.6 `Parsers/` — normalizadores puros
 
@@ -577,7 +612,7 @@ lo que nos deja cambiar de LLM o añadir MAF sin romper nada.
 
 ## 12. Qué nos aporta todo esto (resumen del "por qué")
 
-1. **Se puede probar sin infraestructura.** Los 162 tests unitarios corren sin base de datos ni LLM
+1. **Se puede probar sin infraestructura.** Los 172 tests unitarios corren sin base de datos ni LLM
    reales, porque la lógica (reglas, parsers, orquestador, guard) depende de interfaces que sustituimos
    por dobles de prueba. En N capas clásico esto es mucho más difícil porque la BLL arrastra la DAL.
 
