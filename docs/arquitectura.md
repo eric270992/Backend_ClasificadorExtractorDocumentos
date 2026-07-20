@@ -217,6 +217,35 @@ Las 9 reglas (en `Validacion/Reglas/`), con su severidad:
 | `ReglaFechaRazonable` | `FECHA_RAZONABLE` | Revisión | fecha ni futura ni de hace >10 años |
 | `ReglaDuplicado` | `DUPLICADO` | **Rechazo** | (proveedor + número) ya existe |
 
+**De la severidad al estado.** El `ValidadorAgent` ejecuta las 9 reglas, junta todas las incidencias y
+de la más grave sale el estado final de la factura:
+
+| Severidad | Efecto en el estado |
+|---|---|
+| **Rechazo** | La factura queda `Rechazada` |
+| **Revisión** | `RevisionHumana` (si no hay ningún Rechazo) |
+| **Info** | No penaliza: solo informa |
+| *(ninguna incidencia)* | `Validada` |
+
+Fíjate en que **solo 2 reglas pueden rechazar** (`CAMPOS_OBLIGATORIOS` y `DUPLICADO`): las dos únicas
+situaciones en las que el documento no sirve de nada (le falta un dato imprescindible, o ya está en la
+base). El resto, como mucho, mandan a revisión humana; y una (`REVERSE_CHARGE_OK`) solo informa. Por eso
+en las pruebas se ve sobre todo `RevisionHumana` (algo a mirar) o `Validada`, y `Rechazada` solo con un
+duplicado o un campo obligatorio ausente.
+
+**Las 9 agrupadas por propósito** (para leerlas con sentido, no como una lista suelta):
+
+- **Cuadres aritméticos** — que los números encajen: `CUADRE_LINEAS` (Σlíneas ≈ base), `CUADRE_TOTAL`
+  (base + IVA − IRPF ≈ total), `IVA_COHERENTE` (la cuota concuerda con el %IVA, por línea o global).
+- **Campos y calidad de la extracción**: `CAMPOS_OBLIGATORIOS` (los 4 imprescindibles: nif emisor,
+  número, fecha, total) y `CONFIDENCE_MINIMA` (ningún campo clave con confianza declarada < 0,7 — la
+  mitigación de alucinaciones: el propio modelo avisa de lo que no tiene claro).
+- **Coherencia de datos concretos**: `NIF_FORMATO` (formato ES/VAT UE, delega en el value object `Nif`),
+  `FECHA_RAZONABLE` (ni futura ni de hace >10 años) y `REVERSE_CHARGE_OK` (con inversión del sujeto
+  pasivo, cuota 0 es correcto; solo informa si declara reverse charge pero la cuota no es 0).
+- **Integridad de la base de datos**: `DUPLICADO` (proveedor + número ya existente; el orquestador
+  precalcula la consulta y se la pasa a la regla en el contexto, para que la regla siga siendo pura).
+
 > **¿Son solo 9 "validaciones"?** Sí, hay exactamente 9 **reglas** (`IReglaValidacion`), y esa cifra es
 > estable: una regla es una *decisión de política* (qué severidad, qué mensaje). Pero conviven con una
 > **segunda capa que ha ido creciendo**: la de **autocorrección/deducción** dentro de `FacturaExtraida`
