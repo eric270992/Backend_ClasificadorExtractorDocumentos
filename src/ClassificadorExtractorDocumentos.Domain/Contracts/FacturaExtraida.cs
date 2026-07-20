@@ -18,6 +18,13 @@ public sealed record FacturaExtraida(
     public static readonly IReadOnlyList<string> CamposObligatorios =
         ["emisor.nif", "factura.numero", "factura.fecha", "totales.total"];
 
+    /// <summary>Tipos de IVA vigentes en España (%). Un tipo global DEDUCIDO (cuota/base) que no se
+    /// acerque a ninguno de estos no es un tipo válido, sino señal de que base o cuota están mal
+    /// extraídas: en ese caso no se deduce nada (la factura va a revisión).</summary>
+    public static readonly IReadOnlyList<decimal> TiposIvaEspana = [0m, 4m, 10m, 21m];
+
+    private const decimal ToleranciaTipoIva = 0.5m; // ±0,5 puntos porcentuales al encajar un tipo real
+
     /// <summary>Suma de importes de línea, o null si no hay líneas o alguna no tiene importe.</summary>
     public decimal? SumaLineas() =>
         Lineas.Count == 0 || Lineas.Any(l => l.ImporteLinea is null)
@@ -52,12 +59,35 @@ public sealed record FacturaExtraida(
     public decimal? CuotaIvaEfectiva() =>
         Totales.CuotaIva ?? CuotaIvaCalculadaPorLineas();
 
-    /// <summary>Cuota de IVA esperada aplicando el %IVA global de los totales (cuando las líneas no lo
-    /// traen). Usa la base imponible; si falta, la deriva del total. Null si no hay % global o no hay
-    /// base ni total con los que calcular.</summary>
+    /// <summary>%IVA global EFECTIVO: el declarado en los totales si lo trae; si no, el que se deduce de
+    /// cuota/base SOLO cuando coincide (±0,5 pp) con un tipo real español (ver <see cref="TiposIvaEspana"/>).
+    /// Motivación: modelos pequeños/gratuitos a veces no capturan el "(21%)" impreso aunque sí extraen
+    /// bien cuota y base; en ese caso el tipo se puede recuperar sin inventar. Un cociente que no cae en
+    /// ningún tipo real devuelve null (no se fuerza nada: la factura va a revisión).</summary>
+    public decimal? PorcentajeIvaGlobalEfectivo()
+    {
+        if (Totales.PorcentajeIva is { } declarado && declarado > 0m)
+        {
+            return declarado;
+        }
+
+        if (BaseImponibleEfectiva() is not { } baseImp || baseImp == 0m ||
+            CuotaIvaEfectiva() is not { } cuota)
+        {
+            return null;
+        }
+
+        var derivado = cuota / baseImp * 100m;
+        var candidato = TiposIvaEspana.FirstOrDefault(t => Math.Abs(t - derivado) <= ToleranciaTipoIva, -1m);
+        return candidato >= 0m ? candidato : null;
+    }
+
+    /// <summary>Cuota de IVA esperada aplicando el %IVA global EFECTIVO (declarado o deducido de un tipo
+    /// real). Usa la base imponible; si falta, la deriva del total. Null si no hay % o no hay base ni
+    /// total con los que calcular.</summary>
     public decimal? CuotaIvaEsperadaPorTipoGlobal()
     {
-        if (Totales.PorcentajeIva is not { } pct || pct <= 0m)
+        if (PorcentajeIvaGlobalEfectivo() is not { } pct || pct <= 0m)
         {
             return null;
         }

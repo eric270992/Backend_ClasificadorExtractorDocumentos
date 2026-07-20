@@ -178,11 +178,54 @@ public class FacturaExtraidaTests
     }
 
     [Fact]
-    public void CuotaIvaEsperadaPorTipoGlobal_es_null_sin_tipo_global()
+    public void CuotaIvaEsperadaPorTipoGlobal_deduce_el_tipo_de_cuota_y_base_si_no_viene_declarado()
+    {
+        // Plantilla D vía Nvidia: base y cuota bien extraídas (425 y 89,25) pero el modelo no captura
+        // el "(21%)". 89,25/425 = 21% exacto → tipo real → se puede verificar sin que venga declarado.
+        var factura = FacturaDePrueba.Valida() with
+        {
+            Lineas = [],
+            Totales = new TotalesExtraidos(425m, 89.25m, null, 514.25m, PorcentajeIva: null),
+        };
+
+        Assert.Equal(21m, factura.PorcentajeIvaGlobalEfectivo());
+        Assert.Equal(89.25m, factura.CuotaIvaEsperadaPorTipoGlobal());
+    }
+
+    [Fact]
+    public void PorcentajeIvaGlobalEfectivo_no_deduce_si_el_cociente_no_es_un_tipo_real()
+    {
+        // 80/425 = 18,8% → no se acerca a ningún tipo real (0/4/10/21) → no se deduce nada: es señal
+        // de que base o cuota están mal, y la factura debe ir a revisión, no forzar un tipo inventado.
+        var factura = FacturaDePrueba.Valida() with
+        {
+            Lineas = [],
+            Totales = new TotalesExtraidos(425m, 80m, null, 505m, PorcentajeIva: null),
+        };
+
+        Assert.Null(factura.PorcentajeIvaGlobalEfectivo());
+        Assert.Null(factura.CuotaIvaEsperadaPorTipoGlobal());
+    }
+
+    [Fact]
+    public void PorcentajeIvaGlobalEfectivo_respeta_el_declarado_si_existe()
     {
         var factura = FacturaDePrueba.Valida() with
         {
-            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m),
+            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m, PorcentajeIva: 10m),
+        };
+
+        Assert.Equal(10m, factura.PorcentajeIvaGlobalEfectivo());
+    }
+
+    [Fact]
+    public void CuotaIvaEsperadaPorTipoGlobal_es_null_sin_tipo_ni_forma_de_deducirlo()
+    {
+        // Sin % declarado y sin base/cuota con las que deducir un tipo real → no verificable.
+        var factura = FacturaDePrueba.Valida() with
+        {
+            Lineas = [],
+            Totales = new TotalesExtraidos(null, null, null, 302.5m),
         };
 
         Assert.Null(factura.CuotaIvaEsperadaPorTipoGlobal());

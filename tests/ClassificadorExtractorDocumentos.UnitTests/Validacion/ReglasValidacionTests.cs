@@ -236,12 +236,29 @@ public class ReglaIvaCoherenteTests
     // ── Camino 3: ni %IVA por línea ni global → no verificable ──
 
     [Fact]
+    public void Deduce_el_tipo_global_de_cuota_y_base_cuando_no_viene_impreso()
+    {
+        // Plantilla D vía Nvidia (caso real TL-2026-0243): base 425 y cuota 89,25 bien extraídas,
+        // pero el modelo no captura el "(21%)". 89,25/425 = 21% (tipo real) → se puede verificar sin
+        // que el % venga declarado, en vez de mandar a revisión una factura correcta.
+        var factura = Valida() with
+        {
+            Lineas = [new LineaExtraida("Servicio", 1, 425m, null, 425m)],
+            Totales = new TotalesExtraidos(425m, 89.25m, null, 514.25m), // sin %IVA impreso
+        };
+
+        Assert.Empty(_regla.Validar(Contexto(factura)));
+    }
+
+    [Fact]
     public void Marca_revision_si_no_puede_verificar_el_iva()
     {
+        // Sin %IVA impreso y sin base con la que deducir un tipo real (líneas sin % → base no
+        // deducible): no hay forma de atar la cuota a un tipo → revisión.
         var factura = Valida() with
         {
             Lineas = [new LineaExtraida("Servicio", 1, 250m, null, 250m)],
-            Totales = new TotalesExtraidos(250m, 52.5m, null, 302.5m), // sin %IVA global
+            Totales = new TotalesExtraidos(null, 52.5m, null, 302.5m), // cuota pero sin base ni %
         };
 
         var incidencias = _regla.Validar(Contexto(factura)).ToList();

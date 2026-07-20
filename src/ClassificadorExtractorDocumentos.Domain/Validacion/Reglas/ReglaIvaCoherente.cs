@@ -3,7 +3,8 @@ namespace ClassificadorExtractorDocumentos.Domain.Validacion.Reglas;
 /// <summary>
 /// IVA_COHERENTE: verifica la cuota de IVA declarada, por orden de preferencia:
 ///   1. Si las líneas traen %IVA → cuotaIva ≈ Σ(base_línea × %IVA).
-///   2. Si no, pero los totales indican un %IVA global → cuotaIva ≈ base × %global.
+///   2. Si no, pero hay un %IVA global efectivo (declarado en totales, o deducido de cuota/base cuando
+///      coincide con un tipo real español) → cuotaIva ≈ base × %global.
 ///   3. Si no hay ninguno de los dos y hay cuota ≠ 0 → no se puede verificar → Revisión.
 /// Reverse charge o cuota nula/0 → no aplica (IVA 0 legítimo, lo cubre REVERSE_CHARGE_OK).
 /// El cálculo vive en el modelo (FacturaExtraida); aquí solo la política.
@@ -39,14 +40,14 @@ public class ReglaIvaCoherente : IReglaValidacion
             yield break;
         }
 
-        // 2) %IVA global de los totales (las líneas no traen %)
+        // 2) %IVA global de los totales, declarado o deducido de un tipo real (las líneas no traen %)
         var cuotaPorGlobal = f.CuotaIvaEsperadaPorTipoGlobal();
         if (cuotaPorGlobal is not null)
         {
             if (Math.Abs(cuotaPorGlobal.Value - cuota.Value) > contexto.ToleranciaCuadre)
             {
                 yield return new Incidencia(Codigo,
-                    $"La cuota de IVA aplicando el tipo global {f.Totales.PorcentajeIva}% ({cuotaPorGlobal:0.00}) no coincide con la declarada ({cuota:0.00}); diferencia {Math.Abs(cuotaPorGlobal.Value - cuota.Value):0.00}.",
+                    $"La cuota de IVA aplicando el tipo global {f.PorcentajeIvaGlobalEfectivo()}% ({cuotaPorGlobal:0.00}) no coincide con la declarada ({cuota:0.00}); diferencia {Math.Abs(cuotaPorGlobal.Value - cuota.Value):0.00}.",
                     SeveridadIncidencia.Revision);
             }
             yield break;
