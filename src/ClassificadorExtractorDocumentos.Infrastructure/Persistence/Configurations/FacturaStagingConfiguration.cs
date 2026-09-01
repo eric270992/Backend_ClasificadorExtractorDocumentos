@@ -11,6 +11,10 @@ public class FacturaStagingConfiguration : IEntityTypeConfiguration<FacturaStagi
         builder.ToTable("FacturasStaging");
         builder.HasKey(f => f.Id);
 
+        // Mismas longitudes que Proveedores.Nif/Nombre: es el mismo tipo de dato, aquí desnormalizado
+        builder.Property(f => f.NifCliente).HasMaxLength(20);
+        builder.Property(f => f.NombreCliente).HasMaxLength(200);
+
         builder.Property(f => f.NumeroFactura).HasMaxLength(50).IsRequired();
         builder.Property(f => f.FechaFactura).HasColumnType("date").IsRequired();
         builder.Property(f => f.FechaVencimiento).HasColumnType("date");

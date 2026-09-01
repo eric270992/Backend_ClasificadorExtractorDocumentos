@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
 using PDFtoImage;
 using SkiaSharp;
@@ -11,6 +12,9 @@ public class PdfiumPdfToImageConverter : IPdfToImageConverter
 
     public Task<IReadOnlyList<byte[]>> ConvertToPngPagesAsync(Stream pdfStream, CancellationToken cancellationToken = default)
     {
+        using var activity = PdfTracing.Source.StartActivity("pdf.to_images");
+        activity?.SetTag("pdf.dpi", Dpi);
+
         var options = new RenderOptions(Dpi: Dpi);
         var pages = new List<byte[]>();
 
@@ -25,6 +29,9 @@ public class PdfiumPdfToImageConverter : IPdfToImageConverter
                 pages.Add(data.ToArray());
             }
         }
+
+        activity?.SetTag("pdf.page_count", pages.Count);
+        activity?.SetTag("pdf.total_bytes", pages.Sum(p => (long)p.Length));
 
         return Task.FromResult<IReadOnlyList<byte[]>>(pages);
     }

@@ -1,7 +1,12 @@
 using ClassificadorExtractorDocumentos.Application;
 using ClassificadorExtractorDocumentos.Infrastructure;
+using ClassificadorExtractorDocumentos.Infrastructure.Llm;
+using ClassificadorExtractorDocumentos.Infrastructure.Pdf;
 using ClassificadorExtractorDocumentos.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 
 namespace ClassificadorExtractorDocumentos
@@ -34,6 +39,26 @@ namespace ClassificadorExtractorDocumentos
             builder.Services.AddOpenApi();
             builder.Services.AddApplication(builder.Configuration);
             builder.Services.AddInfrastructure(builder.Configuration);
+
+            // Observabilidad LLM con Phoenix (OTLP). Misma filosofía que "Llm:Perfiles": todo por
+            // configuración en la sección "Observabilidad", cero código para activarla/apuntarla.
+            var obs = builder.Configuration.GetSection("Observabilidad");
+            if (obs.GetValue("Habilitada", false))
+            {
+                builder.Services.AddOpenTelemetry()
+                    .ConfigureResource(r => r.AddService(obs["ServiceName"] ?? "clasificador-extractor-documentos"))
+                    .WithTracing(t => t
+                        .AddSource(LlmTracing.SourceName)
+                        .AddSource(PdfTracing.SourceName)
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddOtlpExporter(o =>
+                        {
+                            o.Endpoint = new Uri(obs["OtlpEndpoint"]
+                                ?? throw new InvalidOperationException("Falta Observabilidad:OtlpEndpoint."));
+                            o.Protocol = OtlpExportProtocol.HttpProtobuf;
+                        }));
+            }
 
             // CORS para el frontend Angular. En dev el proxy evita CORS, pero esto permite
             // llamar a la API directamente (p. ej. sin proxy) desde los orígenes del front.
@@ -71,7 +96,13 @@ namespace ClassificadorExtractorDocumentos
 
             app.UseSerilogRequestLogging();
 
-            app.UseHttpsRedirection();
+            // En dev el frontend habla con la API vía proxy sobre HTTP; forzar la redirección a
+            // HTTPS convierte la petición en cross-origin (http→https, otro puerto) y rompe CORS.
+            // En producción sí redirigimos.
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
 
             app.UseCors(CorsFrontend);
 

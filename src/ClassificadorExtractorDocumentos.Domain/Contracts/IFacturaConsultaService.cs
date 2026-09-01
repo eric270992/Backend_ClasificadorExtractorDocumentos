@@ -32,6 +32,7 @@ public sealed record FacturaResumen(
 public sealed record FacturaDetalle(
     int Id,
     ProveedorResumen? Proveedor,
+    ClienteResumen? Cliente,
     string NumeroFactura,
     DateOnly FechaFactura,
     DateOnly? FechaVencimiento,
@@ -49,6 +50,10 @@ public sealed record FacturaDetalle(
     IReadOnlyList<IncidenciaResumen> Incidencias);
 
 public sealed record ProveedorResumen(string Nif, string Nombre);
+
+/// <summary>Receptor de la factura. A diferencia del proveedor no es una entidad con maestro, así que
+/// cada campo puede faltar por separado (el PDF puede traer el nombre pero no el NIF, o al revés).</summary>
+public sealed record ClienteResumen(string? Nif, string? Nombre);
 
 public sealed record LineaResumen(
     int NumLinea,

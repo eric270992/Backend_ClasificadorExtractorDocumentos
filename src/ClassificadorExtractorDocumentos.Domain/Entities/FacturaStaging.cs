@@ -5,6 +5,13 @@ public class FacturaStaging
     public int Id { get; set; }
     public int? ProveedorId { get; set; }
     public Proveedor? Proveedor { get; set; }
+
+    /// <summary>Receptor de la factura (quien paga), tal como lo extrajo el modelo: NIF normalizado
+    /// y nombre. Desnormalizado a propósito — a diferencia del emisor, el receptor casi siempre es
+    /// la propia empresa, así que no hay maestro de clientes que mantener. Null = no venía en el PDF.</summary>
+    public string? NifCliente { get; set; }
+    public string? NombreCliente { get; set; }
+
     public required string NumeroFactura { get; set; }
     public DateOnly FechaFactura { get; set; }
     public DateOnly? FechaVencimiento { get; set; }
