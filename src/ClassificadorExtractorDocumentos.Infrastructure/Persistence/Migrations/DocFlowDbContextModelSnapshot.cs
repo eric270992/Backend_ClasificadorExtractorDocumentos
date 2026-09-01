@@ -108,8 +108,16 @@ namespace ClassificadorExtractorDocumentos.Infrastructure.Persistence.Migrations
                         .HasColumnType("char(3)")
                         .HasDefaultValue("EUR");
 
+                    b.Property<string>("NifCliente")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<byte>("NivelExtraccion")
                         .HasColumnType("tinyint");
+
+                    b.Property<string>("NombreCliente")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("NumeroFactura")
                         .IsRequired()

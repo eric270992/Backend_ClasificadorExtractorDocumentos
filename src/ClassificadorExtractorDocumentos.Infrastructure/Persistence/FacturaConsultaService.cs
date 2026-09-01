@@ -37,6 +37,10 @@ public class FacturaConsultaService(DocFlowDbContext db) : IFacturaConsultaServi
             .Select(f => new FacturaDetalle(
                 f.Id,
                 f.Proveedor != null ? new ProveedorResumen(f.Proveedor.Nif, f.Proveedor.Nombre) : null,
+                // Sin cliente en absoluto → null (el front pinta "—"); con uno de los dos campos, se devuelve
+                f.NifCliente != null || f.NombreCliente != null
+                    ? new ClienteResumen(f.NifCliente, f.NombreCliente)
+                    : null,
                 f.NumeroFactura,
                 f.FechaFactura,
                 f.FechaVencimiento,

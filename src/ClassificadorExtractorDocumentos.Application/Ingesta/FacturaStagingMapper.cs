@@ -23,6 +23,9 @@ public static class FacturaStagingMapper
 
         return new FacturaStaging
         {
+            // Receptor: el NIF ya viene normalizado por el parser de extracción; null si no venía
+            NifCliente = f.Receptor.Nif,
+            NombreCliente = f.Receptor.Nombre,
             NumeroFactura = f.Factura.Numero ?? $"(SIN-NUMERO)-{documento.Id.ToString()[..8]}",
             FechaFactura = ParsearFecha(f.Factura.Fecha) ?? DateOnly.FromDateTime(fechaIngesta),
             FechaVencimiento = ParsearFecha(f.Factura.Vencimiento),

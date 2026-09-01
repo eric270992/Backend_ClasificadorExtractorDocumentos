@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow AI · Proposta capa Docling (doble verificació)</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2530; --ink:#e6edf3; --muted:#9aa7b4;
+    --line:#2a3441; --green:#3fb950; --green-d:#238636; --blue:#58a6ff; --amber:#d29922;
+    --purple:#bc8cff; --red:#f85149; --cyan:#39c5cf;
+    --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#0e1116,#0b0e13);color:var(--ink);
+    font:16px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:0 0 80px}
+  header{padding:48px 24px 24px;text-align:center;border-bottom:1px solid var(--line);
+    background:radial-gradient(1200px 300px at 50% -50px,rgba(88,166,255,.12),transparent)}
+  h1{margin:0 0 6px;font-size:32px;letter-spacing:-.5px}
+  h1 .ai{color:var(--blue)}
+  .sub{color:var(--muted);font-size:16px;max-width:720px;margin:0 auto}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  section{margin-top:56px}
+  h2{font-size:22px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+  h2 .n{width:30px;height:30px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+    display:inline-flex;align-items:center;justify-content:center;font-size:15px;color:var(--blue)}
+  .lead{color:var(--muted);margin:0 0 22px}
+
+  /* flow diagrams */
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;background:var(--panel);
+    border:1px solid var(--line);border-radius:14px;padding:22px 18px;box-shadow:var(--shadow)}
+  .node{flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:12px 12px;text-align:center;display:flex;flex-direction:column;gap:4px;justify-content:center}
+  .node .ico{font-size:22px}
+  .node .t{font-weight:600;font-size:14px}
+  .node .d{font-size:11.5px;color:var(--muted);line-height:1.3}
+  .arrow{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:20px;padding:0 6px}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);
+    color:var(--muted);background:#0d1117}
+  .n-llm{border-color:var(--blue)} .n-llm .ico{color:var(--blue)}
+  .n-doc{border-color:var(--purple)} .n-doc .ico{color:var(--purple)}
+  .n-rec{border-color:var(--cyan)} .n-rec .ico{color:var(--cyan)}
+  .n-val{border-color:var(--green)} .n-val .ico{color:var(--green)}
+  .n-new{position:relative}
+  .n-new::after{content:"NOU";position:absolute;top:-9px;right:-6px;background:var(--green-d);color:#fff;
+    font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.5px}
+
+  .parallel{flex:1.6;min-width:260px;display:flex;flex-direction:column;gap:10px;
+    border:1px dashed var(--cyan);border-radius:12px;padding:10px;background:rgba(57,197,207,.05)}
+  .parallel .lbl{font-size:11px;color:var(--cyan);text-align:center;text-transform:uppercase;letter-spacing:1px}
+  .parallel .row{display:flex;gap:8px}
+  .parallel .row .node{flex:1}
+
+  /* advantages cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;
+    box-shadow:var(--shadow);transition:.2s}
+  .card:hover{transform:translateY(-3px);border-color:var(--blue)}
+  .card .ico{font-size:26px;margin-bottom:8px}
+  .card h3{margin:0 0 6px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+
+  /* policy table */
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  th,td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+  th{background:var(--panel2);color:var(--ink);font-size:12.5px;text-transform:uppercase;letter-spacing:.6px}
+  tr:last-child td{border-bottom:none}
+  td b{color:var(--ink)}
+  .pill{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600;white-space:nowrap}
+  .p-ok{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.4)}
+  .p-rev{background:rgba(210,153,34,.15);color:var(--amber);border:1px solid rgba(210,153,34,.4)}
+
+  .note{margin-top:16px;background:var(--panel);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;
+    padding:14px 18px;color:var(--muted);font-size:14px}
+  .note b{color:var(--ink)}
+  code{background:#0d1117;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13px;color:var(--cyan)}
+  .foot{margin-top:60px;text-align:center;color:var(--muted);font-size:13px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:14px;font-size:12.5px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<header>
+  <h1>DocFlow <span class="ai">AI</span> · Capa de <span style="color:var(--cyan)">doble verificació</span></h1>
+  <p class="sub">Afegir una segona via d'extracció independent (Docling en Docker) i contrastar-la
+  amb el model de visió per detectar errors abans que arribin a la base de dades.</p>
+</header>
+
+<div class="wrap">
+
+  <!-- FLUX ACTUAL -->
+  <section>
+    <h2><span class="n">1</span> Flux actual — una sola veu</h2>
+    <p class="lead">Tota la decisió depèn del model de visió sobre les imatges. Si s'equivoca en un
+    número, l'únic filtre són les regles de quadre aritmètic.</p>
+    <div class="flow">
+      <div class="node"><span class="ico">📄</span><span class="t">PDF</span><span class="d">factura pujada</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="ico">🖼️</span><span class="t">PDF → PNG</span><span class="d">Pdfium (local)</span></div>
+      <div class="arrow">→</div>
+      <div class="node n-llm"><span class="ico">👁️</span><span class="t">Extractor visió</span><span class="d">LLM multimodal<br>(Groq / LM Studio)</span></div>
+      <div class="arrow">→</div>
+      <div class="node n-val"><span class="ico">⚖️</span><span class="t">9 regles</span><span class="d">quadre + camps<br>+ autocorrecció</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="ico">🗄️</span><span class="t">SQL Server</span><span class="d">staging transaccional</span></div>
+    </div>
+    <div class="note"><b>Punt feble:</b> si la visió llegeix malament un import i el resultat encara
+    "quadra" per casualitat, cap regla el pot enxampar. No hi ha una segona opinió independent.</div>
+  </section>
+
+  <!-- FLUX PROPOSAT -->
+  <section>
+    <h2><span class="n">2</span> Flux proposat — dues veus independents que es contrasten</h2>
+    <p class="lead">Docling parseja el layout i les taules del PDF amb un pipeline determinista,
+    <b>independent</b> del model de visió. Les dues extraccions produeixen el mateix contracte i es
+    reconcilien camp a camp. Corren <b>en paral·lel</b>: el temps afegit és mínim.</p>
+    <div class="flow">
+      <div class="node"><span class="ico">📄</span><span class="t">PDF</span><span class="d">factura pujada</span></div>
+      <div class="arrow">→</div>
+
+      <div class="parallel">
+        <div class="lbl">⇉ en paral·lel</div>
+        <div class="row">
+          <div class="node n-llm"><span class="ico">👁️</span><span class="t">Via A · Visió</span><span class="d">LLM sobre imatges</span></div>
+        </div>
+        <div class="row">
+          <div class="node n-doc n-new"><span class="ico">🧩</span><span class="t">Via B · Docling</span><span class="d">parser layout/taules<br>(Docker · Python)</span></div>
+        </div>
+      </div>
+
+      <div class="arrow">→</div>
+      <div class="node n-rec n-new"><span class="ico">🔀</span><span class="t">Reconciliador</span><span class="d">contrast camp a camp<br>(domini pur)</span></div>
+      <div class="arrow">→</div>
+      <div class="node n-val"><span class="ico">⚖️</span><span class="t">9 regles<br>+ discrepàncies</span><span class="d">estat final</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="ico">🗄️</span><span class="t">SQL Server</span><span class="d">staging</span></div>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--blue)"></i>Existent — model de visió</span>
+      <span><i class="dot" style="background:var(--purple)"></i>Nou — Docling (Docker)</span>
+      <span><i class="dot" style="background:var(--cyan)"></i>Nou — reconciliació (domini pur)</span>
+      <span><i class="dot" style="background:var(--green)"></i>Existent — validació</span>
+    </div>
+    <div class="note"><b>Encaix arquitectònic:</b> Docling entra darrere d'una interfície nova
+    (<code>IExtractorEstructural</code>) igual que avui el LLM entra per <code>ILlmClient</code>.
+    El nucli (<code>Domain</code>/<code>Application</code>) <b>no canvia</b>: només s'afegeix el
+    registre a <code>Program.cs</code>. Sense el servei Docling actiu, el pipeline es comporta
+    exactament com ara.</div>
+  </section>
+
+  <!-- QUÈ PASSA QUAN DISCREPEN -->
+  <section>
+    <h2><span class="n">3</span> Què passa quan les dues vies discrepen</h2>
+    <p class="lead">La política de reconciliació és on hi ha tot el valor. Reaprofita els càlculs de
+    quadre que el domini ja té (<code>TotalCalculado</code>, <code>SumaLineas()</code>…).</p>
+    <table>
+      <thead><tr><th>Situació</th><th>Decisió</th><th>Estat</th></tr></thead>
+      <tbody>
+        <tr><td><b>Les dues coincideixen</b> (dins tolerància ±0,02 €)</td>
+            <td>Dada confirmada per dues fonts independents → confiança alta.</td>
+            <td><span class="pill p-ok">Validada</span></td></tr>
+        <tr><td><b>Una font no té el camp</b> (null)</td>
+            <td>S'usa l'altra. Docling recupera camps que la visió perd i viceversa.</td>
+            <td><span class="pill p-ok">Validada</span></td></tr>
+        <tr><td><b>Discrepen, una quadra</b></td>
+            <td>Guanya la font internament consistent (la que fa <code>base+IVA−IRPF ≈ total</code>).</td>
+            <td><span class="pill p-ok">Validada</span></td></tr>
+        <tr><td><b>Discrepen i cap quadra</b></td>
+            <td>Incidència <code>DISCREPANCIA_FUENTES</code> → ull humà. Justament el cas que avui passa desapercebut.</td>
+            <td><span class="pill p-rev">Revisió humana</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- AVANTATGES -->
+  <section>
+    <h2><span class="n">4</span> Què ens aporta</h2>
+    <p class="lead">La millora de fiabilitat més gran possible sense canviar de model.</p>
+    <div class="grid">
+      <div class="card"><div class="ico">🎯</div><h3>Errors no correlacionats</h3>
+        <p>Docling i el model de visió fallen de maneres diferents. Quan tots dos coincideixen, la
+        confiança és molt més alta que amb una sola via.</p></div>
+      <div class="card"><div class="ico">🔍</div><h3>Detecta el que ara s'escapa</h3>
+        <p>Una lectura incorrecta que "quadra" per casualitat avui passa. Amb dues fonts, la
+        discrepància la delata i va a revisió.</p></div>
+      <div class="card"><div class="ico">📊</div><h3>Millor amb taules</h3>
+        <p>Docling està especialitzat en extreure taules i layout de PDF nadiu-digital: reforça les
+        línies de detall, que és on més pateix la visió.</p></div>
+      <div class="card"><div class="ico">🧱</div><h3>Zero canvis al nucli</h3>
+        <p>Entra per una interfície, com Groq o LM Studio. El domini i els casos d'ús no es toquen;
+        els 172 tests segueixen verds.</p></div>
+      <div class="card"><div class="ico">⚡</div><h3>Cost en temps mínim</h3>
+        <p>Les dues extraccions corren en paral·lel: el temps afegit és el màxim dels dos, no la
+        suma.</p></div>
+      <div class="card"><div class="ico">🧪</div><h3>Reconciliació testejable</h3>
+        <p>És lògica de domini pura (sense BD ni xarxa), igual que l'autocorrecció d'IVA. Es prova
+        amb tests unitaris ràpids.</p></div>
+    </div>
+  </section>
+
+  <!-- COST HONEST -->
+  <section>
+    <h2><span class="n">5</span> El cost honest (a valorar)</h2>
+    <div class="grid">
+      <div class="card" style="border-color:var(--amber)"><div class="ico">🐳</div><h3>Un servei més</h3>
+        <p>Docling és Python: cal un contenidor extra al <code>docker-compose</code> i mantenir-lo.</p></div>
+      <div class="card" style="border-color:var(--amber)"><div class="ico">📷</div><h3>Menys útil en escanejats</h3>
+        <p>Sense capa de text, Docling cau a OCR i deixa de ser tan independent. El guany és màxim en
+        PDF nadiu-digital.</p></div>
+      <div class="card" style="border-color:var(--amber)"><div class="ico">⚖️</div><h3>La política ho és tot</h3>
+        <p>Si en discrepar sempre triem "el mateix" sense criteri, dupliquem cost sense guanyar
+        fiabilitat. El valor és a la reconciliació.</p></div>
+    </div>
+  </section>
+
+  <p class="foot">DocFlow AI · Proposta de capa de doble verificació amb Docling · encara en fase de disseny</p>
+</div>
+</body>
+</html>

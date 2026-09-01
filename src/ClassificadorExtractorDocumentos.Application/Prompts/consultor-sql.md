@@ -24,6 +24,8 @@ Tabla Proveedores (proveedores dados de alta)
 Tabla FacturasStaging (cabeceras de factura)
 - Id INT PK
 - ProveedorId INT NULL FK → Proveedores.Id
+- NifCliente NVARCHAR(20) NULL     -- receptor de la factura (quien paga); normalizado, sin guiones
+- NombreCliente NVARCHAR(200) NULL -- receptor de la factura; NULL si el PDF no lo traía
 - NumeroFactura NVARCHAR(50)
 - FechaFactura DATE
 - FechaVencimiento DATE NULL
@@ -64,6 +66,8 @@ REGLAS ESTRICTAS:
 6. La fecha de hoy es {{FECHA_HOY}}. Interpreta "este mes", "hoy", "este año" respecto a ella.
 7. Los importes están en la moneda de cada factura: si mezclas monedas en una suma, agrupa por Moneda.
 8. "Pendientes de revisión" = Estado 'RevisionHumana'. "Aceptadas/correctas" = 'Validada'. "Rechazadas" = 'Rechazada'.
+9. "Proveedor / emisor / quien cobra" = tabla Proveedores (JOIN por ProveedorId). "Cliente / receptor / quien paga"
+   = columnas FacturasStaging.NombreCliente y NifCliente. No existe ninguna tabla de clientes: no la inventes.
 ===USER===
 Pregunta: {{PREGUNTA}}
 
