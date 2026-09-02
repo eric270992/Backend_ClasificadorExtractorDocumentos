@@ -23,7 +23,11 @@ public class DocumentosController(
     /// El campo del formulario se mantiene 'pdf' por compatibilidad con los clientes existentes.</summary>
     [HttpPost]
     [RequestSizeLimit(TamanoMaximoBytes)]
-    public async Task<IActionResult> Subir(IFormFile pdf, CancellationToken cancellationToken, [FromQuery] bool procesar = true)
+    public async Task<IActionResult> Subir(
+        IFormFile pdf,
+        CancellationToken cancellationToken,
+        [FromQuery] bool procesar = true,
+        [FromQuery] bool? usarTextoPdf = null)
     {
         if (pdf is null || pdf.Length == 0)
         {
@@ -48,12 +52,12 @@ public class DocumentosController(
         {
             if (!procesar)
             {
-                var documento = await ingestaService.IngestarAsync(stream, cancellationToken);
+                var documento = await ingestaService.IngestarAsync(stream, usarTextoPdf, cancellationToken);
                 return CreatedAtAction(nameof(Subir), new { id = documento.Id },
                     new { DocumentoId = documento.Id, Paginas = documento.RutasImagenes.Count });
             }
 
-            var resultado = await orquestador.ProcesarAsync(stream, cancellationToken);
+            var resultado = await orquestador.ProcesarAsync(stream, usarTextoPdf, cancellationToken);
 
             if (resultado.Error is not null)
             {

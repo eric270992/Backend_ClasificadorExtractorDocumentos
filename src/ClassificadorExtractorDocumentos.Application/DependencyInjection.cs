@@ -14,6 +14,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<IngestaOptions>(configuration.GetSection(IngestaOptions.SectionName));
+
         services.AddScoped<IngestaDocumentoService>();
         services.AddScoped<ExtractorAgent>();
         services.AddScoped<ValidadorAgent>();

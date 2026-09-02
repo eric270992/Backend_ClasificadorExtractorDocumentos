@@ -19,10 +19,11 @@ public class MafIngestaOrquestador(
     TimeProvider timeProvider,
     ILogger<MafIngestaOrquestador> logger) : IIngestaPipeline
 {
-    public async Task<ResultadoIngesta> ProcesarAsync(Stream pdfStream, CancellationToken cancellationToken = default)
+    public async Task<ResultadoIngesta> ProcesarAsync(
+        Stream pdfStream, bool? usarTextoPdf = null, CancellationToken cancellationToken = default)
     {
         // 1. Ingesta previa al workflow (I/O de preparación): PDF → PNGs en disco
-        var documento = await ingestaService.IngestarAsync(pdfStream, cancellationToken);
+        var documento = await ingestaService.IngestarAsync(pdfStream, usarTextoPdf, cancellationToken);
         var imagenes = await ingestaService.ObtenerImagenesAsync(documento.Id, cancellationToken)
             ?? throw new InvalidOperationException($"Documento {documento.Id} recién ingestado sin imágenes.");
 

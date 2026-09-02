@@ -19,10 +19,11 @@ public class IngestaOrquestador(
     IFacturaStagingRepository repositorio,
     TimeProvider timeProvider) : IIngestaPipeline
 {
-    public async Task<ResultadoIngesta> ProcesarAsync(Stream pdfStream, CancellationToken cancellationToken = default)
+    public async Task<ResultadoIngesta> ProcesarAsync(
+        Stream pdfStream, bool? usarTextoPdf = null, CancellationToken cancellationToken = default)
     {
         // 1. Ingesta: PDF → PNGs en disco
-        var documento = await ingestaService.IngestarAsync(pdfStream, cancellationToken);
+        var documento = await ingestaService.IngestarAsync(pdfStream, usarTextoPdf, cancellationToken);
 
         // 2. Extracción (nivel 3 genérico en E1)
         var imagenes = await ingestaService.ObtenerImagenesAsync(documento.Id, cancellationToken)

@@ -12,7 +12,10 @@ namespace ClassificadorExtractorDocumentos.Application.Ingesta;
 /// </summary>
 public interface IIngestaPipeline
 {
-    Task<ResultadoIngesta> ProcesarAsync(Stream pdfStream, CancellationToken cancellationToken = default);
+    /// <param name="usarTextoPdf">Override por petición de <c>Ingesta:UsarTextoPdf</c>. Null = usar la
+    /// configuración. Útil para comparar latencia con/sin el texto embebido sin reiniciar la app.</param>
+    Task<ResultadoIngesta> ProcesarAsync(
+        Stream pdfStream, bool? usarTextoPdf = null, CancellationToken cancellationToken = default);
 }
 
 public sealed record ResultadoIngesta(

@@ -5,6 +5,7 @@ using ClassificadorExtractorDocumentos.Domain.Contracts;
 using ClassificadorExtractorDocumentos.Domain.Entities;
 using ClassificadorExtractorDocumentos.Domain.Validacion.Reglas;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 namespace ClassificadorExtractorDocumentos.UnitTests.Ingesta;
@@ -28,7 +29,8 @@ public class IngestaOrquestadorTests
     private static IngestaOrquestador CrearOrquestador(string respuestaLlm, RepositorioFake repo)
     {
         var ingesta = new IngestaDocumentoService(
-            new ConversorFake(), new TextExtractorFake(), new NormalizerFake(), new StorageFake());
+            new ConversorFake(), new TextExtractorFake(), new NormalizerFake(), new StorageFake(),
+            Options.Create(new IngestaOptions()));
         var extractor = new ExtractorAgent(new LlmFake(respuestaLlm), NullLogger<ExtractorAgent>.Instance);
         var validador = new ValidadorAgent(
         [
