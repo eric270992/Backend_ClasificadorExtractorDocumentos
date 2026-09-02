@@ -1,4 +1,5 @@
 using ClassificadorExtractorDocumentos.Domain.Contracts;
+using Microsoft.Extensions.Options;
 
 namespace ClassificadorExtractorDocumentos.Application.Ingesta;
 
@@ -11,10 +12,16 @@ public class IngestaDocumentoService(
     IPdfToImageConverter pdfToImageConverter,
     IPdfTextExtractor pdfTextExtractor,
     IImagenNormalizer imagenNormalizer,
-    IDocumentStorage documentStorage)
+    IDocumentStorage documentStorage,
+    IOptions<IngestaOptions> options)
 {
-    public async Task<DocumentoIngestado> IngestarAsync(Stream documentoStream, CancellationToken cancellationToken = default)
+    private readonly IngestaOptions _options = options.Value;
+
+    public async Task<DocumentoIngestado> IngestarAsync(
+        Stream documentoStream, bool? usarTextoPdf = null, CancellationToken cancellationToken = default)
     {
+        var extraerTexto = usarTextoPdf ?? _options.UsarTextoPdf;
+
         using var buffer = new MemoryStream();
         await documentoStream.CopyToAsync(buffer, cancellationToken);
         var bytes = buffer.ToArray();
@@ -29,7 +36,11 @@ public class IngestaDocumentoService(
             // para el Extractor. Un PDF escaneado/fotografiado no la tiene: textoPdf queda en null
             // y el pipeline sigue solo con visión, como hasta ahora. Stream propio (a partir de los
             // bytes ya leídos): el convertidor a imagen cierra el suyo (leaveOpen: false internamente).
-            textoPdf = await pdfTextExtractor.ExtraerTextoAsync(new MemoryStream(bytes), cancellationToken);
+            // Desactivable con Ingesta:UsarTextoPdf=false (vuelve al modo solo-visión anterior).
+            if (extraerTexto)
+            {
+                textoPdf = await pdfTextExtractor.ExtraerTextoAsync(new MemoryStream(bytes), cancellationToken);
+            }
 
             buffer.Position = 0;
             paginasPng = await pdfToImageConverter.ConvertToPngPagesAsync(buffer, cancellationToken);

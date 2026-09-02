@@ -1,5 +1,6 @@
 using ClassificadorExtractorDocumentos.Application.Ingesta;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
+using Microsoft.Extensions.Options;
 
 namespace ClassificadorExtractorDocumentos.UnitTests.Ingesta;
 
@@ -8,11 +9,14 @@ public class IngestaDocumentoServiceTests
     private static readonly byte[] PdfBytes = [0x25, 0x50, 0x44, 0x46, 0x00];
     private static readonly byte[] PngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00];
 
+    private static IngestaDocumentoService Crear(IPdfTextExtractor extractor, bool usarTextoPdf = true) =>
+        new(new ConversorFake(), extractor, new NormalizerFake(), new StorageFake(),
+            Options.Create(new IngestaOptions { UsarTextoPdf = usarTextoPdf }));
+
     [Fact]
     public async Task Ingestar_pdf_con_texto_lo_incluye_en_el_resultado()
     {
-        var servicio = new IngestaDocumentoService(
-            new ConversorFake(), new TextExtractorFake("IVA (21%): 89,25"), new NormalizerFake(), new StorageFake());
+        var servicio = Crear(new TextExtractorFake("IVA (21%): 89,25"));
 
         var documento = await servicio.IngestarAsync(new MemoryStream(PdfBytes));
 
@@ -22,8 +26,7 @@ public class IngestaDocumentoServiceTests
     [Fact]
     public async Task Ingestar_pdf_sin_capa_de_texto_deja_TextoPdf_en_null()
     {
-        var servicio = new IngestaDocumentoService(
-            new ConversorFake(), new TextExtractorFake(null), new NormalizerFake(), new StorageFake());
+        var servicio = Crear(new TextExtractorFake(null));
 
         var documento = await servicio.IngestarAsync(new MemoryStream(PdfBytes));
 
@@ -34,10 +37,21 @@ public class IngestaDocumentoServiceTests
     public async Task Ingestar_una_imagen_no_extrae_texto()
     {
         var extractor = new TextExtractorFake("esto no debería usarse");
-        var servicio = new IngestaDocumentoService(
-            new ConversorFake(), extractor, new NormalizerFake(), new StorageFake());
+        var servicio = Crear(extractor);
 
         var documento = await servicio.IngestarAsync(new MemoryStream(PngBytes));
+
+        Assert.Null(documento.TextoPdf);
+        Assert.Equal(0, extractor.Llamadas);
+    }
+
+    [Fact]
+    public async Task Ingestar_pdf_con_UsarTextoPdf_desactivado_no_extrae_texto()
+    {
+        var extractor = new TextExtractorFake("esto no debería usarse");
+        var servicio = Crear(extractor, usarTextoPdf: false);
+
+        var documento = await servicio.IngestarAsync(new MemoryStream(PdfBytes));
 
         Assert.Null(documento.TextoPdf);
         Assert.Equal(0, extractor.Llamadas);
