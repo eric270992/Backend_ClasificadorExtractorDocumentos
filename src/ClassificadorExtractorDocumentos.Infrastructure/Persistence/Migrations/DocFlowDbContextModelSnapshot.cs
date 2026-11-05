@@ -153,6 +153,47 @@ namespace ClassificadorExtractorDocumentos.Infrastructure.Persistence.Migrations
                     b.ToTable("FacturasStaging", (string)null);
                 });
 
+            modelBuilder.Entity("ClassificadorExtractorDocumentos.Domain.Entities.HistorialCambioFactura", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Campo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("FacturaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaCambio")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("Usuario")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ValorAnterior")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ValorNuevo")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacturaId");
+
+                    b.ToTable("HistorialCambiosFactura", (string)null);
+                });
+
             modelBuilder.Entity("ClassificadorExtractorDocumentos.Domain.Entities.Proveedor", b =>
                 {
                     b.Property<int>("Id")
@@ -268,6 +309,15 @@ namespace ClassificadorExtractorDocumentos.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Proveedor");
+                });
+
+            modelBuilder.Entity("ClassificadorExtractorDocumentos.Domain.Entities.HistorialCambioFactura", b =>
+                {
+                    b.HasOne("ClassificadorExtractorDocumentos.Domain.Entities.FacturaStaging", null)
+                        .WithMany()
+                        .HasForeignKey("FacturaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ClassificadorExtractorDocumentos.Domain.Entities.ProveedorEjemplo", b =>

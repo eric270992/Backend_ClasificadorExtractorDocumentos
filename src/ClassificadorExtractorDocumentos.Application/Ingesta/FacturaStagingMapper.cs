@@ -44,7 +44,7 @@ public static class FacturaStagingMapper
             Lineas = f.Lineas.Select((l, i) => new FacturaLinea
             {
                 NumLinea = i + 1,
-                Descripcion = l.Descripcion ?? "(sin descripción)",
+                Descripcion = TruncarDescripcion(l.Descripcion ?? "(sin descripción)"),
                 Cantidad = l.Cantidad ?? 0m,
                 PrecioUnitario = l.PrecioUnitario ?? 0m,
                 PorcentajeIva = l.PorcentajeIva ?? 0m,
@@ -57,6 +57,20 @@ public static class FacturaStagingMapper
                 FechaCreacion = fechaIngesta,
             }).ToList(),
         };
+    }
+
+    // Debe coincidir con HasMaxLength de FacturaLineaConfiguration; el texto completo queda en JsonOriginalExtraido
+    private const int DescripcionLineaMaxLength = 500;
+
+    private static string TruncarDescripcion(string descripcion)
+    {
+        if (descripcion.Length <= DescripcionLineaMaxLength)
+        {
+            return descripcion;
+        }
+
+        // Rango [..500]: los primeros 500 caracteres (equivale a Substring(0, 500))
+        return descripcion[..DescripcionLineaMaxLength];
     }
 
     private static DateOnly? ParsearFecha(string? iso) =>

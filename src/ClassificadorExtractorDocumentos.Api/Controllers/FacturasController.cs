@@ -35,6 +35,16 @@ public class FacturasController(IFacturaConsultaService consultas, IFacturaStagi
         return resultado.Exito ? NoContent() : BadRequest(resultado.Motivo);
     }
 
+    /// <summary>Edición manual de los campos extraídos: solo válida si la factura está en Validada
+    /// o RevisionHumana. Cada campo que cambia de valor queda registrado en el historial de
+    /// auditoría (ver Historial en el detalle).</summary>
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Actualizar(int id, ActualizarFacturaRequest request, CancellationToken cancellationToken)
+    {
+        var resultado = await repositorio.ActualizarAsync(id, request, cancellationToken);
+        return resultado.Exito ? NoContent() : BadRequest(resultado.Motivo);
+    }
+
     /// <summary>Eliminación lógica (soft delete): la factura deja de aparecer en el listado,
     /// pero no se borra físicamente (permite reprocesar el mismo proveedor+número).</summary>
     [HttpDelete("{id:int}")]

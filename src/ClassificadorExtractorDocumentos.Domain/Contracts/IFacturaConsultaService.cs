@@ -47,7 +47,8 @@ public sealed record FacturaDetalle(
     DateTime FechaIngesta,
     DateTime? FechaAprobacionManual,
     IReadOnlyList<LineaResumen> Lineas,
-    IReadOnlyList<IncidenciaResumen> Incidencias);
+    IReadOnlyList<IncidenciaResumen> Incidencias,
+    IReadOnlyList<HistorialCambioResumen> Historial);
 
 public sealed record ProveedorResumen(string Nif, string Nombre);
 
@@ -64,3 +65,11 @@ public sealed record LineaResumen(
     decimal ImporteLinea);
 
 public sealed record IncidenciaResumen(string Codigo, string Detalle, DateTime FechaCreacion);
+
+/// <summary>Una edición manual de un campo, para pintar el historial de auditoría en el detalle.</summary>
+public sealed record HistorialCambioResumen(
+    string Campo,
+    string? ValorAnterior,
+    string? ValorNuevo,
+    DateTime FechaCambio,
+    string Usuario);

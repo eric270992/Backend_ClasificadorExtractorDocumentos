@@ -61,6 +61,11 @@ public class FacturaConsultaService(DocFlowDbContext db) : IFacturaConsultaServi
                     .ToList(),
                 f.Incidencias
                     .Select(i => new IncidenciaResumen(i.Codigo, i.Detalle, i.FechaCreacion))
+                    .ToList(),
+                db.HistorialCambiosFactura
+                    .Where(h => h.FacturaId == f.Id)
+                    .OrderByDescending(h => h.FechaCambio)
+                    .Select(h => new HistorialCambioResumen(h.Campo, h.ValorAnterior, h.ValorNuevo, h.FechaCambio, h.Usuario))
                     .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
     }
