@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ClassificadorExtractorDocumentos.Infrastructure.Llm;
@@ -14,7 +15,10 @@ namespace ClassificadorExtractorDocumentos.Infrastructure.Llm;
 /// (Llm:BaseUrl + Llm:Model), sin tocar código — mitigación §7 del SPEC.
 /// Las imágenes se envían como data-URI base64.
 /// </summary>
-public class OpenAiCompatibleLlmClient(HttpClient httpClient, IOptions<LlmOptions> options) : ILlmClient
+public class OpenAiCompatibleLlmClient(
+    HttpClient httpClient,
+    IOptions<LlmOptions> options,
+    ILogger<OpenAiCompatibleLlmClient> logger) : ILlmClient
 {
     private readonly LlmOptions _options = options.Value;
 
@@ -30,10 +34,27 @@ public class OpenAiCompatibleLlmClient(HttpClient httpClient, IOptions<LlmOption
         {
             new { type = "text", text = peticion.PromptUsuario },
         };
-        contenidoUsuario.AddRange(peticion.ImagenesPng.Select(png => (object)new
+        // Límit d'imatges del servidor (per perfil). Es queden les primeres pàgines, que és on hi ha
+        // les dades de la factura (capçalera, emissor, totals). Es registra al log i a la traça perquè el
+        // retall no passi desapercebut: millor una extracció amb 4 pàgines que un error 400.
+        var imagenes = peticion.ImagenesPng;
+        if (_options.MaxImagenesPorPeticion is int maxImagenes && imagenes.Count > maxImagenes)
+        {
+            logger.LogWarning(
+                "El document té {Total} pàgines i el proveïdor n'admet {Max} per petició: s'envien les {Max} primeres.",
+                imagenes.Count, maxImagenes, maxImagenes);
+            imagenes = imagenes.Take(maxImagenes).ToList();
+        }
+
+        // Les imatges arriben sempre en PNG (pàgines de PDF o fotos normalitzades). Abans d'enviar-les
+        // es recodifiquen segons el perfil (JPEG per defecte) per reduir la mida de la petició.
+        var imagenesEnviadas = imagenes
+            .Select(png => CodificadorImagenLlm.Preparar(png, _options.FormatoImagen, _options.CalidadJpeg))
+            .ToList();
+        contenidoUsuario.AddRange(imagenesEnviadas.Select(img => (object)new
         {
             type = "image_url",
-            image_url = new { url = $"data:image/png;base64,{Convert.ToBase64String(png)}" },
+            image_url = new { url = $"data:{img.MimeType};base64,{Convert.ToBase64String(img.Bytes)}" },
         }));
 
         var cuerpo = new
@@ -43,6 +64,11 @@ public class OpenAiCompatibleLlmClient(HttpClient httpClient, IOptions<LlmOption
             max_completion_tokens = _options.MaxTokens,
             response_format = peticion.ForzarJson && _options.UsarResponseFormatJson
                 ? new { type = "json_object" }
+                : null,
+            // Només s'envia si el perfil ho demana. Quan és null, el serialitzador l'omet
+            // (DefaultIgnoreCondition = WhenWritingNull) i la petició queda exactament com abans.
+            chat_template_kwargs = _options.DesactivarThinking
+                ? new { enable_thinking = false }
                 : null,
             messages = new object[]
             {
@@ -56,6 +82,7 @@ public class OpenAiCompatibleLlmClient(HttpClient httpClient, IOptions<LlmOption
         activity?.SetTag("openinference.span.kind", "LLM");
         activity?.SetTag("llm.system", _options.BaseUrl);
         activity?.SetTag("llm.model_name", _options.Model);
+        activity?.SetTag("llm.thinking_desactivado", _options.DesactivarThinking);
         activity?.SetTag("llm.invocation_parameters",
             JsonSerializer.Serialize(new { _options.Temperature, max_tokens = _options.MaxTokens }, JsonOptions));
         activity?.SetTag("input.mime_type", "text/plain");
@@ -64,14 +91,16 @@ public class OpenAiCompatibleLlmClient(HttpClient httpClient, IOptions<LlmOption
         activity?.SetTag("llm.prompts.0.content", peticion.PromptSistema);
         activity?.SetTag("llm.input_messages.0.message.role", "user");
         activity?.SetTag("llm.input_messages.0.message.content", peticion.PromptUsuario);
-        activity?.SetTag("llm.input_images.count", peticion.ImagenesPng.Count);
+        activity?.SetTag("llm.input_images.count", imagenesEnviadas.Count);
+        activity?.SetTag("llm.input_images.descartadas", peticion.ImagenesPng.Count - imagenesEnviadas.Count);
+        // Bytes reals enviats (després de recodificar): permet veure a Phoenix l'efecte del JPEG
+        activity?.SetTag("llm.input_images.bytes", imagenesEnviadas.Sum(i => (long)i.Bytes.Length));
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl.TrimEnd('/')}/chat/completions")
         {
             Content = JsonContent.Create(cuerpo, options: JsonOptions),
         };
 
-        Console.WriteLine(JsonSerializer.Serialize(cuerpo, JsonOptions));
         // JsonContent.Create añade "; charset=utf-8" por defecto; algunos proveedores (Nvidia NIM)
         // lo rechazan con 415 exigiendo el media type exacto "application/json", sin parámetros.
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -94,10 +123,17 @@ public class OpenAiCompatibleLlmClient(HttpClient httpClient, IOptions<LlmOption
         using var json = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(cancellationToken));
         var root = json.RootElement;
         var choice = root.GetProperty("choices")[0];
-        var contenido = choice
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString();
+        var mensaje = choice.GetProperty("message");
+        var contenido = mensaje.GetProperty("content").GetString();
+
+        // vLLM amb "reasoning parser" retorna el raonament en un camp separat que no fem servir.
+        // Es registra la seva mida a la traça: si el thinking continua actiu (p. ex. el flag no ha arribat
+        // al model), es veurà a Phoenix en lloc de quedar amagat dins el temps de resposta.
+        if (mensaje.TryGetProperty("reasoning_content", out var razonamiento)
+            && razonamiento.ValueKind == JsonValueKind.String)
+        {
+            activity?.SetTag("llm.reasoning.length", razonamiento.GetString()!.Length);
+        }
 
         // El bloque usage (opcional según proveedor) alimenta las métricas de tokens de Phoenix.
         if (root.TryGetProperty("usage", out var usage))
