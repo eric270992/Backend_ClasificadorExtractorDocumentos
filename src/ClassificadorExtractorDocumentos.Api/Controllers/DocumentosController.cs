@@ -13,7 +13,9 @@ public class DocumentosController(
     ExtractorAgent extractorAgent,
     IDocumentStorage documentStorage) : ControllerBase
 {
-    private const long TamanoMaximoBytes = 10 * 1024 * 1024;
+    /// <summary>Pública perquè ConfiguracionController la pugui exposar al frontend. Ha de ser constant
+    /// perquè la fa servir l'atribut [RequestSizeLimit].</summary>
+    public const long TamanoMaximoBytes = 10 * 1024 * 1024;
 
     private static readonly string[] ExtensionesAdmitidas = [".pdf", ".jpg", ".jpeg", ".png"];
 
@@ -75,6 +77,12 @@ public class DocumentosController(
         catch (FormatoNoSoportadoException ex)
         {
             return BadRequest(ex.Message);
+        }
+        catch (DocumentoDemasiadoLargoException ex)
+        {
+            // 422: el fitxer és correcte però no el podem processar. Mateix format { error } que la resta
+            // d'errors de pujada, més les dues xifres perquè el frontend actualitzi el límit si ha canviat.
+            return UnprocessableEntity(new { Error = ex.Message, ex.Paginas, ex.MaxPaginas });
         }
     }
 

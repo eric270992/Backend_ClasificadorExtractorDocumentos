@@ -85,6 +85,18 @@ namespace ClassificadorExtractorDocumentos
 
             app.Logger.LogInformation("Base de datos activa: {Proveedor}", app.Configuration["Database:Proveedor"] ?? "LocalDb");
 
+            // Si s'accepten més pàgines de les que el proveïdor LLM pot rebre en una crida, les últimes
+            // es retallarien (sovint, els totals). Només és un avís: no impedeix arrencar.
+            var maxPaginas = app.Configuration.GetValue("Ingesta:MaxPaginasPorDocumento", 4);
+            var maxImagenes = app.Configuration.GetValue<int?>(
+                $"Llm:Perfiles:{app.Configuration["Llm:Proveedor"] ?? "Groq"}:MaxImagenesPorPeticion");
+            if (maxImagenes is int limite && maxPaginas > limite)
+            {
+                app.Logger.LogWarning(
+                    "Ingesta:MaxPaginasPorDocumento ({MaxPaginas}) supera el límit d'imatges del proveïdor LLM ({MaxImagenes}): les últimes pàgines no arribaran al model.",
+                    maxPaginas, limite);
+            }
+
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {

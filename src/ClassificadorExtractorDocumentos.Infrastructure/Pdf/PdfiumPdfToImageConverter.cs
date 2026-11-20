@@ -35,4 +35,12 @@ public class PdfiumPdfToImageConverter : IPdfToImageConverter
 
         return Task.FromResult<IReadOnlyList<byte[]>>(pages);
     }
+
+    public int ContarPaginas(byte[] pdf)
+    {
+        // PDFium només llegeix l'estructura del document: no renderitza cap pàgina
+#pragma warning disable CA1416 // Mateix motiu que a ConvertToPngPagesAsync
+        return Conversion.GetPageCount(pdf, password: null);
+#pragma warning restore CA1416
+    }
 }
