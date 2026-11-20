@@ -3,6 +3,7 @@ using ClassificadorExtractorDocumentos.Infrastructure;
 using ClassificadorExtractorDocumentos.Infrastructure.Llm;
 using ClassificadorExtractorDocumentos.Infrastructure.Pdf;
 using ClassificadorExtractorDocumentos.Infrastructure.Persistence;
+using ClassificadorExtractorDocumentos.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
@@ -50,6 +51,11 @@ namespace ClassificadorExtractorDocumentos
                     .WithTracing(t => t
                         .AddSource(LlmTracing.SourceName)
                         .AddSource(PdfTracing.SourceName)
+                        // Spans del pipeline (ingesta, extracció, validació), fitxers i BD: sense aquests
+                        // registres els StartActivity retornen null i no es mesura res.
+                        .AddSource(PipelineTracing.SourceName)
+                        .AddSource(DocumentosTracing.SourceName)
+                        .AddSource(PersistenciaTracing.SourceName)
                         .AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
                         .AddOtlpExporter(o =>

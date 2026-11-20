@@ -3,7 +3,7 @@ Prompt de extracción genérica (nivel 3) — SPEC §2.1 y §E1-F2.
 Versionado: cualquier cambio aquí debe reflejarse en el historial del repositorio.
 La primera sección (hasta la línea ===USER===) es el prompt de sistema; el resto, el turno de usuario.
 -->
-Eres un extractor experto de datos de facturas de compra. Recibes las páginas de una factura como imágenes y devuelves EXCLUSIVAMENTE un objeto JSON válido, sin texto adicional, sin markdown, sin explicaciones.
+Eres un extractor experto de datos de facturas de compra. Recibes las páginas de una factura como imágenes y devuelves EXCLUSIVAMENTE un objeto JSON válido, sin texto adicional, sin markdown, sin explicaciones. El JSON debe ir COMPACTO: en una sola línea, sin sangrado, sin saltos de línea y sin espacios innecesarios (el esquema de abajo está indentado solo para que se lea mejor; NO copies ese formato).
 
 REGLAS ESTRICTAS:
 1. NUNCA inventes valores. Si un campo no aparece en el documento: usa null y confidence 0.0 para ese campo.
@@ -73,4 +73,4 @@ ESQUEMA JSON DE SALIDA (respeta nombres y tipos exactamente):
   }
 }
 ===USER===
-Extrae los datos de esta factura siguiendo el esquema indicado. Devuelve SOLO el JSON.
+Extrae los datos de esta factura siguiendo el esquema indicado. Devuelve SOLO el JSON, compacto en una sola línea.

@@ -11,11 +11,17 @@ public class FacturaStagingRepository(DocFlowDbContext db, TimeProvider timeProv
     /// se atribuye a este usuario fijo en el historial de auditoría.</summary>
     private const string UsuarioPorDefecto = "Usuario desconocido";
 
-    public Task<bool> ExisteFacturaAsync(string nifEmisor, string numeroFactura, CancellationToken cancellationToken = default) =>
-        db.FacturasStaging.AnyAsync(
+    public async Task<bool> ExisteFacturaAsync(string nifEmisor, string numeroFactura, CancellationToken cancellationToken = default)
+    {
+        // Abans era una expressió d'una línia; ara és async per poder obrir el span al voltant de la consulta
+        using var activity = PersistenciaTracing.Source.StartActivity("bd.existe_factura");
+        var existe = await db.FacturasStaging.AnyAsync(
             f => f.NumeroFactura == numeroFactura && f.Proveedor != null && f.Proveedor.Nif == nifEmisor
                 && f.FechaEliminacion == null && f.Estado != EstadoFactura.Rechazada,
             cancellationToken);
+        activity?.SetTag("bd.existe", existe);
+        return existe;
+    }
 
     public async Task<int> GuardarAsync(
         FacturaStaging factura,
@@ -23,6 +29,11 @@ public class FacturaStagingRepository(DocFlowDbContext db, TimeProvider timeProv
         string? nombreProveedor,
         CancellationToken cancellationToken = default)
     {
+        // Span de tot el desat (transacció inclosa). La primera petició després d'arrencar sol ser més
+        // lenta perquè EF Core construeix el model i obre la primera connexió.
+        using var activity = PersistenciaTracing.Source.StartActivity("bd.guardar_factura");
+        activity?.SetTag("bd.lineas", factura.Lineas.Count);
+
         // Transacción explícita: alta de proveedor + factura + líneas + incidencias, todo o nada
         await using var transaccion = await db.Database.BeginTransactionAsync(cancellationToken);
 

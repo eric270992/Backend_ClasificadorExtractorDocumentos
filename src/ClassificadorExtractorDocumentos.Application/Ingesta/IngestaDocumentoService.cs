@@ -20,6 +20,10 @@ public class IngestaDocumentoService(
     public async Task<DocumentoIngestado> IngestarAsync(
         Stream documentoStream, bool? usarTextoPdf = null, CancellationToken cancellationToken = default)
     {
+        // Span de tota la ingesta (lectura del fitxer, text, imatges, disc). Els spans pdf.*, imagen.*
+        // i storage.* queden niats a dins i en desglossen el temps.
+        using var activity = PipelineTracing.Source.StartActivity("ingesta.documento");
+
         var extraerTexto = usarTextoPdf ?? _options.UsarTextoPdf;
 
         using var buffer = new MemoryStream();
@@ -27,11 +31,14 @@ public class IngestaDocumentoService(
         var bytes = buffer.ToArray();
 
         var formato = DeteccionFormato.Detectar(bytes);
+        activity?.SetTag("documento.formato", formato.ToString());
+        activity?.SetTag("documento.bytes", bytes.Length);
 
         IReadOnlyList<byte[]> paginasPng;
         string? textoPdf = null;
         if (formato == FormatoDocumento.Pdf)
         {
+
             // Si el PDF tiene capa de texto (nacido digital), se extrae como referencia adicional
             // para el Extractor. Un PDF escaneado/fotografiado no la tiene: textoPdf queda en null
             // y el pipeline sigue solo con visión, como hasta ahora. Stream propio (a partir de los
@@ -55,7 +62,11 @@ public class IngestaDocumentoService(
             throw new FormatoNoSoportadoException();
         }
 
+        activity?.SetTag("documento.paginas", paginasPng.Count);
+        activity?.SetTag("documento.con_texto_pdf", textoPdf is not null);
+
         var documentoId = Guid.NewGuid();
+        activity?.SetTag("documento.id", documentoId);
         var (rutaOriginal, rutasImagenes) = await documentStorage.GuardarDocumentoAsync(
             documentoId, bytes, formato.Extension(), paginasPng, cancellationToken);
 

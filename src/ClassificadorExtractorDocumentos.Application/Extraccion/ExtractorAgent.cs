@@ -28,6 +28,12 @@ public class ExtractorAgent(ILlmClient llmClient, ILogger<ExtractorAgent> logger
     public async Task<ResultadoExtraccion> ExtraerAsync(
         IReadOnlyList<byte[]> paginasPng, string? textoPdf = null, CancellationToken cancellationToken = default)
     {
+        // Span de l'extracció completa: inclou la crida al model (llm.chat, niada a dins), el parseig
+        // i l'eventual reintent. Si hi ha reintent, es veuran dues crides llm.chat sota aquest span.
+        using var activity = PipelineTracing.Source.StartActivity("extraccion");
+        activity?.SetTag("extraccion.paginas_documento", paginasPng.Count);
+        activity?.SetTag("extraccion.con_texto_pdf", !string.IsNullOrWhiteSpace(textoPdf));
+
         if (paginasPng.Count > MaxPaginasPorPeticion)
         {
             paginasPng = paginasPng.Take(MaxPaginasPorPeticion).ToList();
@@ -42,8 +48,14 @@ public class ExtractorAgent(ILlmClient llmClient, ILogger<ExtractorAgent> logger
         var parseo = FacturaExtraidaParser.Parse(respuesta);
         if (parseo.Exito)
         {
+            activity?.SetTag("extraccion.reintentos", 0);
+            activity?.SetTag("extraccion.exito", true);
             return ResultadoExtraccion.Ok(parseo.Factura!, parseo.JsonOriginal!, reintentos: 0);
         }
+
+        // Es deixa constància a la traça del motiu del reintent: és una crida al model sencera de més
+        activity?.AddEvent(new System.Diagnostics.ActivityEvent("extraccion.reintento",
+            tags: new System.Diagnostics.ActivityTagsCollection { ["error"] = parseo.Error }));
 
         // Reintento único con feedback del error (SPEC §7: "LLM devuelve JSON malformado")
         var usuarioConFeedback =
@@ -54,6 +66,8 @@ public class ExtractorAgent(ILlmClient llmClient, ILogger<ExtractorAgent> logger
             new LlmPeticion(sistema, usuarioConFeedback, paginasPng), cancellationToken);
 
         parseo = FacturaExtraidaParser.Parse(respuesta);
+        activity?.SetTag("extraccion.reintentos", 1);
+        activity?.SetTag("extraccion.exito", parseo.Exito);
         if (parseo.Exito)
         {
             return ResultadoExtraccion.Ok(parseo.Factura!, parseo.JsonOriginal!, reintentos: 1);

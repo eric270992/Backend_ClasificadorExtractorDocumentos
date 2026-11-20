@@ -14,6 +14,10 @@ public class FileSystemDocumentStorage(IOptions<StorageOptions> options) : IDocu
         IReadOnlyList<byte[]> paginasPng,
         CancellationToken cancellationToken = default)
     {
+        using var activity = DocumentosTracing.Source.StartActivity("storage.guardar");
+        activity?.SetTag("storage.paginas", paginasPng.Count);
+        activity?.SetTag("storage.bytes", originalBytes.Length + paginasPng.Sum(p => (long)p.Length));
+
         var carpetaDocumento = Path.Combine(_basePath, documentoId.ToString());
         Directory.CreateDirectory(carpetaDocumento);
 
@@ -33,6 +37,8 @@ public class FileSystemDocumentStorage(IOptions<StorageOptions> options) : IDocu
 
     public async Task<IReadOnlyList<byte[]>?> ObtenerImagenesAsync(Guid documentoId, CancellationToken cancellationToken = default)
     {
+        using var activity = DocumentosTracing.Source.StartActivity("storage.leer");
+
         var carpetaDocumento = Path.Combine(_basePath, documentoId.ToString());
         if (!Directory.Exists(carpetaDocumento))
         {

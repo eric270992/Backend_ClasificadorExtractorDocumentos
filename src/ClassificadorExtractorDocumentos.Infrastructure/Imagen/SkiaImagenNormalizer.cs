@@ -1,4 +1,5 @@
 using ClassificadorExtractorDocumentos.Domain.Contracts;
+using ClassificadorExtractorDocumentos.Infrastructure.Storage;
 using SkiaSharp;
 
 namespace ClassificadorExtractorDocumentos.Infrastructure.Imagen;
@@ -23,6 +24,10 @@ public class SkiaImagenNormalizer : IImagenNormalizer
 
     public Task<byte[]> NormalizarAPngAsync(byte[] imagen, CancellationToken cancellationToken = default)
     {
+        // Span de la normalització: és la sospitosa dels ~2 s abans del model quan es puja una foto
+        using var activity = DocumentosTracing.Source.StartActivity("imagen.normalizar");
+        activity?.SetTag("imagen.bytes_entrada", imagen.Length);
+
         using var data = SKData.CreateCopy(imagen);
         using var codec = SKCodec.Create(data)
             ?? throw new InvalidOperationException("La imagen no se ha podido decodificar.");
@@ -59,6 +64,11 @@ public class SkiaImagenNormalizer : IImagenNormalizer
 
         using var resultado = surface.Snapshot();
         using var png = resultado.Encode(SKEncodedImageFormat.Png, 100);
+
+        activity?.SetTag("imagen.original", $"{ancho}x{alto}");
+        activity?.SetTag("imagen.orientacion_exif", origen.ToString());
+        activity?.SetTag("imagen.final", $"{anchoDestino}x{altoDestino}");
+        activity?.SetTag("imagen.bytes_png", png.Size);
         return Task.FromResult(png.ToArray());
     }
 
