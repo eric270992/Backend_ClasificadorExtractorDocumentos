@@ -9,6 +9,9 @@ public class ValidadorAgent(IEnumerable<IReglaValidacion> reglas)
 {
     public ResultadoValidacion Validar(ContextoValidacion contexto)
     {
+        // Les regles són pures (sense BD) i haurien de trigar mil·lisegons; el span ho confirma
+        using var activity = PipelineTracing.Source.StartActivity("validacion");
+
         var incidencias = reglas
             .SelectMany(r => r.Validar(contexto))
             .ToList();
@@ -19,6 +22,8 @@ public class ValidadorAgent(IEnumerable<IReglaValidacion> reglas)
                 ? EstadoFactura.RevisionHumana
                 : EstadoFactura.Validada;
 
+        activity?.SetTag("validacion.estado", estado.ToString());
+        activity?.SetTag("validacion.incidencias", incidencias.Count);
         return new ResultadoValidacion(estado, incidencias);
     }
 }

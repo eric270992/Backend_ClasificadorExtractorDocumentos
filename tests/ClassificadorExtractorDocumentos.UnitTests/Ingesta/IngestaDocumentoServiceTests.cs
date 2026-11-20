@@ -9,9 +9,34 @@ public class IngestaDocumentoServiceTests
     private static readonly byte[] PdfBytes = [0x25, 0x50, 0x44, 0x46, 0x00];
     private static readonly byte[] PngBytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00];
 
-    private static IngestaDocumentoService Crear(IPdfTextExtractor extractor, bool usarTextoPdf = true) =>
-        new(new ConversorFake(), extractor, new NormalizerFake(), new StorageFake(),
-            Options.Create(new IngestaOptions { UsarTextoPdf = usarTextoPdf }));
+    private static IngestaDocumentoService Crear(
+        IPdfTextExtractor extractor, bool usarTextoPdf = true, int paginasPdf = 1, int maxPaginas = 4) =>
+        new(new ConversorFake(paginasPdf), extractor, new NormalizerFake(), new StorageFake(),
+            Options.Create(new IngestaOptions { UsarTextoPdf = usarTextoPdf, MaxPaginasPorDocumento = maxPaginas }));
+
+    [Fact]
+    public async Task Ingestar_pdf_con_mas_paginas_que_el_maximo_lo_rechaza_sin_extraer_texto()
+    {
+        var extractor = new TextExtractorFake("no debería llegar aquí");
+        var servicio = Crear(extractor, paginasPdf: 10, maxPaginas: 4);
+
+        var ex = await Assert.ThrowsAsync<DocumentoDemasiadoLargoException>(
+            () => servicio.IngestarAsync(new MemoryStream(PdfBytes)));
+
+        Assert.Equal(10, ex.Paginas);
+        Assert.Equal(4, ex.MaxPaginas);
+        Assert.Equal(0, extractor.Llamadas); // s'ha aturat abans de fer cap feina
+    }
+
+    [Fact]
+    public async Task Ingestar_pdf_con_exactamente_el_maximo_de_paginas_se_acepta()
+    {
+        var servicio = Crear(new TextExtractorFake(null), paginasPdf: 4, maxPaginas: 4);
+
+        var documento = await servicio.IngestarAsync(new MemoryStream(PdfBytes));
+
+        Assert.NotEqual(Guid.Empty, documento.Id);
+    }
 
     [Fact]
     public async Task Ingestar_pdf_con_texto_lo_incluye_en_el_resultado()
@@ -57,10 +82,12 @@ public class IngestaDocumentoServiceTests
         Assert.Equal(0, extractor.Llamadas);
     }
 
-    private sealed class ConversorFake : IPdfToImageConverter
+    private sealed class ConversorFake(int paginas = 1) : IPdfToImageConverter
     {
         public Task<IReadOnlyList<byte[]>> ConvertToPngPagesAsync(Stream pdfStream, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<byte[]>>([[1, 2, 3]]);
+
+        public int ContarPaginas(byte[] pdf) => paginas;
     }
 
     private sealed class TextExtractorFake(string? texto) : IPdfTextExtractor

@@ -10,6 +10,7 @@ public class DocFlowDbContext(DbContextOptions<DocFlowDbContext> options) : DbCo
     public DbSet<FacturaStaging> FacturasStaging => Set<FacturaStaging>();
     public DbSet<FacturaLinea> FacturasLineas => Set<FacturaLinea>();
     public DbSet<ValidacionIncidencia> ValidacionIncidencias => Set<ValidacionIncidencia>();
+    public DbSet<HistorialCambioFactura> HistorialCambiosFactura => Set<HistorialCambioFactura>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

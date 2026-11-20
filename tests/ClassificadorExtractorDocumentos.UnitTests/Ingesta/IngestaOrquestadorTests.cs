@@ -105,10 +105,12 @@ public class IngestaOrquestadorTests
             Task.FromResult(respuesta);
     }
 
-    private sealed class ConversorFake : IPdfToImageConverter
+    private sealed class ConversorFake(int paginas = 1) : IPdfToImageConverter
     {
         public Task<IReadOnlyList<byte[]>> ConvertToPngPagesAsync(Stream pdfStream, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<byte[]>>([[1, 2, 3]]);
+
+        public int ContarPaginas(byte[] pdf) => paginas;
     }
 
     private sealed class TextExtractorFake : IPdfTextExtractor

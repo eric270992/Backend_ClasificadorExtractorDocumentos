@@ -20,6 +20,10 @@ public class IngestaDocumentoService(
     public async Task<DocumentoIngestado> IngestarAsync(
         Stream documentoStream, bool? usarTextoPdf = null, CancellationToken cancellationToken = default)
     {
+        // Span de tota la ingesta (lectura del fitxer, text, imatges, disc). Els spans pdf.*, imagen.*
+        // i storage.* queden niats a dins i en desglossen el temps.
+        using var activity = PipelineTracing.Source.StartActivity("ingesta.documento");
+
         var extraerTexto = usarTextoPdf ?? _options.UsarTextoPdf;
 
         using var buffer = new MemoryStream();
@@ -27,11 +31,22 @@ public class IngestaDocumentoService(
         var bytes = buffer.ToArray();
 
         var formato = DeteccionFormato.Detectar(bytes);
+        activity?.SetTag("documento.formato", formato.ToString());
+        activity?.SetTag("documento.bytes", bytes.Length);
 
         IReadOnlyList<byte[]> paginasPng;
         string? textoPdf = null;
         if (formato == FormatoDocumento.Pdf)
         {
+            // Primer de tot, comptar pàgines: si n'hi ha massa, aturem aquí, abans d'extreure text,
+            // renderitzar, desar a disc o cridar el model. Una imatge sempre és 1 pàgina i no cal comptar-la.
+            var numPaginas = pdfToImageConverter.ContarPaginas(bytes);
+            activity?.SetTag("documento.paginas_pdf", numPaginas);
+            if (numPaginas > _options.MaxPaginasPorDocumento)
+            {
+                throw new DocumentoDemasiadoLargoException(numPaginas, _options.MaxPaginasPorDocumento);
+            }
+
             // Si el PDF tiene capa de texto (nacido digital), se extrae como referencia adicional
             // para el Extractor. Un PDF escaneado/fotografiado no la tiene: textoPdf queda en null
             // y el pipeline sigue solo con visión, como hasta ahora. Stream propio (a partir de los
@@ -55,12 +70,19 @@ public class IngestaDocumentoService(
             throw new FormatoNoSoportadoException();
         }
 
+        activity?.SetTag("documento.paginas", paginasPng.Count);
+        activity?.SetTag("documento.con_texto_pdf", textoPdf is not null);
+
         var documentoId = Guid.NewGuid();
+        activity?.SetTag("documento.id", documentoId);
         var (rutaOriginal, rutasImagenes) = await documentStorage.GuardarDocumentoAsync(
             documentoId, bytes, formato.Extension(), paginasPng, cancellationToken);
 
         return new DocumentoIngestado(documentoId, rutaOriginal, rutasImagenes, textoPdf);
     }
+
+    /// <summary>Límits de pujada que el frontend mostra a l'usuari (GET /configuracion).</summary>
+    public int ObtenerMaxPaginasPorDocumento() => _options.MaxPaginasPorDocumento;
 
     public Task<IReadOnlyList<byte[]>?> ObtenerImagenesAsync(Guid documentoId, CancellationToken cancellationToken = default) =>
         documentStorage.ObtenerImagenesAsync(documentoId, cancellationToken);

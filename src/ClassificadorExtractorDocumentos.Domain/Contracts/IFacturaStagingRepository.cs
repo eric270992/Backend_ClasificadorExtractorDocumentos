@@ -24,6 +24,15 @@ public interface IFacturaStagingRepository
     /// <summary>Aprobación manual: solo válida si la factura está en RevisionHumana. Pasa a Validada
     /// y registra FechaAprobacionManual. Falla si no existe o no está en ese estado.</summary>
     Task<ResultadoAprobacion> AprobarAsync(int facturaId, CancellationToken cancellationToken = default);
+
+    /// <summary>Edición manual de los campos extraídos: solo válida si la factura está en Validada
+    /// o RevisionHumana (no tiene sentido editar una Rechazada o ya IntegradaERP). Por cada campo que
+    /// cambia de valor registra una fila en el historial de auditoría (valor anterior, valor nuevo,
+    /// fecha, usuario). Falla si no existe o no está en uno de esos dos estados.</summary>
+    Task<ResultadoAprobacion> ActualizarAsync(
+        int facturaId,
+        ActualizarFacturaRequest request,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record ResultadoAprobacion(bool Exito, string? Motivo)
@@ -31,3 +40,18 @@ public sealed record ResultadoAprobacion(bool Exito, string? Motivo)
     public static ResultadoAprobacion Ok() => new(true, null);
     public static ResultadoAprobacion Fallo(string motivo) => new(false, motivo);
 }
+
+/// <summary>Campos editables a mano por un humano tras la extracción automática. No incluye el
+/// proveedor (cambiarlo implica buscar/crear otro maestro, fuera del alcance de esta edición).</summary>
+public sealed record ActualizarFacturaRequest(
+    string? NifCliente,
+    string? NombreCliente,
+    string NumeroFactura,
+    DateOnly FechaFactura,
+    DateOnly? FechaVencimiento,
+    string Moneda,
+    decimal BaseImponible,
+    decimal CuotaIva,
+    decimal? RetencionIrpf,
+    decimal Total,
+    bool ReverseCharge);

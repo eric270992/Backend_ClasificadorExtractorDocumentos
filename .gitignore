@@ -24,3 +24,6 @@ publish/
 ## La plantilla de qué configurar sí se versiona: appsettings.Production.example.json
 appsettings.Production.json
 appsettings.*.Local.json
+
+## Documentación/notas locales (NO versionar): apuntes personales que no deben subirse
+docs/local/

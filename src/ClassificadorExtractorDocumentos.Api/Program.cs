@@ -3,6 +3,7 @@ using ClassificadorExtractorDocumentos.Infrastructure;
 using ClassificadorExtractorDocumentos.Infrastructure.Llm;
 using ClassificadorExtractorDocumentos.Infrastructure.Pdf;
 using ClassificadorExtractorDocumentos.Infrastructure.Persistence;
+using ClassificadorExtractorDocumentos.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
@@ -50,6 +51,11 @@ namespace ClassificadorExtractorDocumentos
                     .WithTracing(t => t
                         .AddSource(LlmTracing.SourceName)
                         .AddSource(PdfTracing.SourceName)
+                        // Spans del pipeline (ingesta, extracció, validació), fitxers i BD: sense aquests
+                        // registres els StartActivity retornen null i no es mesura res.
+                        .AddSource(PipelineTracing.SourceName)
+                        .AddSource(DocumentosTracing.SourceName)
+                        .AddSource(PersistenciaTracing.SourceName)
                         .AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
                         .AddOtlpExporter(o =>
@@ -78,6 +84,18 @@ namespace ClassificadorExtractorDocumentos
                 app.Configuration[$"Llm:Perfiles:{app.Configuration["Llm:Proveedor"] ?? "Groq"}:Model"]);
 
             app.Logger.LogInformation("Base de datos activa: {Proveedor}", app.Configuration["Database:Proveedor"] ?? "LocalDb");
+
+            // Si s'accepten més pàgines de les que el proveïdor LLM pot rebre en una crida, les últimes
+            // es retallarien (sovint, els totals). Només és un avís: no impedeix arrencar.
+            var maxPaginas = app.Configuration.GetValue("Ingesta:MaxPaginasPorDocumento", 4);
+            var maxImagenes = app.Configuration.GetValue<int?>(
+                $"Llm:Perfiles:{app.Configuration["Llm:Proveedor"] ?? "Groq"}:MaxImagenesPorPeticion");
+            if (maxImagenes is int limite && maxPaginas > limite)
+            {
+                app.Logger.LogWarning(
+                    "Ingesta:MaxPaginasPorDocumento ({MaxPaginas}) supera el límit d'imatges del proveïdor LLM ({MaxImagenes}): les últimes pàgines no arribaran al model.",
+                    maxPaginas, limite);
+            }
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
