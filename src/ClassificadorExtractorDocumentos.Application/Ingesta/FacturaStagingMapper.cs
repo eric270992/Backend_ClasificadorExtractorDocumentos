@@ -47,7 +47,7 @@ public static class FacturaStagingMapper
                 Descripcion = TruncarDescripcion(l.Descripcion ?? "(sin descripción)"),
                 Cantidad = l.Cantidad ?? 0m,
                 PrecioUnitario = l.PrecioUnitario ?? 0m,
-                PorcentajeIva = l.PorcentajeIva ?? 0m,
+                PorcentajeIva = l.PorcentajeIva, // null = no indicat al document (no és el mateix que 0%)
                 ImporteLinea = l.ImporteLinea ?? 0m,
             }).ToList(),
             Incidencias = validacion.Incidencias.Select(i => new ValidacionIncidencia

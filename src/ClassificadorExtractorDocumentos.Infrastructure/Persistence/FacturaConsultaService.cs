@@ -57,7 +57,7 @@ public class FacturaConsultaService(DocFlowDbContext db) : IFacturaConsultaServi
                 f.Lineas
                     .OrderBy(l => l.NumLinea)
                     .Select(l => new LineaResumen(
-                        l.NumLinea, l.Descripcion, l.Cantidad, l.PrecioUnitario, l.PorcentajeIva, l.ImporteLinea))
+                        l.Id, l.NumLinea, l.Descripcion, l.Cantidad, l.PrecioUnitario, l.PorcentajeIva, l.ImporteLinea))
                     .ToList(),
                 f.Incidencias
                     .Select(i => new IncidenciaResumen(i.Codigo, i.Detalle, i.FechaCreacion))

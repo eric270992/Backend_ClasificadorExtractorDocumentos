@@ -1,4 +1,5 @@
 using ClassificadorExtractorDocumentos.Application.Consultor;
+using ClassificadorExtractorDocumentos.Application.Edicion;
 using ClassificadorExtractorDocumentos.Application.Extraccion;
 using ClassificadorExtractorDocumentos.Application.Ingesta;
 using ClassificadorExtractorDocumentos.Application.Ingesta.Maf;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<ExtractorAgent>();
         services.AddScoped<ValidadorAgent>();
         services.AddScoped<ConsultorAgent>();
+        services.AddScoped<FacturaEdicionService>();
         services.AddSingleton(TimeProvider.System);
 
         // Pipeline de ingesta: motor conmutable (SPEC §7). "Maf" (Etapa 2, por defecto) o "Manual" (plan B).
