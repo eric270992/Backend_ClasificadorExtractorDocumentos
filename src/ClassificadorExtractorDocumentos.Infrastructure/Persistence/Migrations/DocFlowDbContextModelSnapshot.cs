@@ -47,7 +47,7 @@ namespace ClassificadorExtractorDocumentos.Infrastructure.Persistence.Migrations
                     b.Property<int>("NumLinea")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("PorcentajeIva")
+                    b.Property<decimal?>("PorcentajeIva")
                         .HasColumnType("decimal(5,2)");
 
                     b.Property<decimal>("PrecioUnitario")

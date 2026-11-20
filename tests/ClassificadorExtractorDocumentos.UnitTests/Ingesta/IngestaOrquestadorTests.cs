@@ -166,5 +166,20 @@ public class IngestaOrquestadorTests
 
         public Task<ResultadoAprobacion> AprobarAsync(int facturaId, CancellationToken ct = default) =>
             Task.FromResult(ResultadoAprobacion.Ok());
+
+        // L'edició no intervé en la ingesta: aquests mètodes no s'arriben a cridar en aquestes proves
+        public Task<bool> ExisteOtraFacturaAsync(string nif, string numero, int excluir, CancellationToken ct = default) =>
+            Task.FromResult(false);
+
+        public Task<FacturaStaging?> ObtenerParaEdicionAsync(int facturaId, CancellationToken ct = default) =>
+            Task.FromResult<FacturaStaging?>(null);
+
+        public Task<IReadOnlyList<string>> ObtenerCamposEditadosAsync(int facturaId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task GuardarEdicionAsync(
+            FacturaStaging factura, IReadOnlyList<FacturaLinea> lineasEliminadas,
+            IReadOnlyList<ValidacionIncidencia> incidenciasAnteriores, IReadOnlyList<HistorialCambioFactura> cambios,
+            CancellationToken ct = default) => Task.CompletedTask;
     }
 }

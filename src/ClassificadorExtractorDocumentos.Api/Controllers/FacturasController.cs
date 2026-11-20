@@ -1,3 +1,4 @@
+using ClassificadorExtractorDocumentos.Application.Edicion;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,7 +10,10 @@ namespace ClassificadorExtractorDocumentos.Api.Controllers;
 /// <see cref="IFacturaStagingRepository"/>. El controlador no toca la base de datos directamente.</summary>
 [ApiController]
 [Route("facturas")]
-public class FacturasController(IFacturaConsultaService consultas, IFacturaStagingRepository repositorio) : ControllerBase
+public class FacturasController(
+    IFacturaConsultaService consultas,
+    IFacturaStagingRepository repositorio,
+    FacturaEdicionService edicion) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Listar(CancellationToken cancellationToken)
@@ -35,14 +39,27 @@ public class FacturasController(IFacturaConsultaService consultas, IFacturaStagi
         return resultado.Exito ? NoContent() : BadRequest(resultado.Motivo);
     }
 
-    /// <summary>Edición manual de los campos extraídos: solo válida si la factura está en Validada
-    /// o RevisionHumana. Cada campo que cambia de valor queda registrado en el historial de
-    /// auditoría (ver Historial en el detalle).</summary>
+    /// <summary>Edición manual de la cabecera y, si llegan, de las líneas (añadir, modificar, eliminar):
+    /// solo válida si la factura está en Validada o RevisionHumana. Cada cambio queda en el historial de
+    /// auditoría. Tras editar se vuelven a pasar las reglas: devuelve el nuevo estado y las incidencias.
+    /// Si la edición provocaría un Rechazo (p. ej. número duplicado), no se guarda nada (400 con el motivo).</summary>
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Actualizar(int id, ActualizarFacturaRequest request, CancellationToken cancellationToken)
     {
-        var resultado = await repositorio.ActualizarAsync(id, request, cancellationToken);
-        return resultado.Exito ? NoContent() : BadRequest(resultado.Motivo);
+        // L'edició (capçalera i línies) i la revalidació les fa el servei; aquí només es tradueix a HTTP
+        var resultado = await edicion.ActualizarAsync(id, request, cancellationToken);
+        if (!resultado.Exito)
+        {
+            return BadRequest(resultado.Motivo);
+        }
+
+        // Es retorna l'estat i les incidències després de revalidar, perquè el frontend ho pugui mostrar
+        return Ok(new
+        {
+            Estado = resultado.Estado!.Value.ToString(),
+            resultado.HuboCambios,
+            Incidencias = resultado.Incidencias.Select(i => new { i.Codigo, i.Detalle, Severidad = i.Severidad.ToString() }),
+        });
     }
 
     /// <summary>Eliminación lógica (soft delete): la factura deja de aparecer en el listado,

@@ -56,12 +56,15 @@ public sealed record ProveedorResumen(string Nif, string Nombre);
 /// cada campo puede faltar por separado (el PDF puede traer el nombre pero no el NIF, o al revés).</summary>
 public sealed record ClienteResumen(string? Nif, string? Nombre);
 
+/// <summary>Id: necessari perquè el frontend pugui dir quina línia modifica en editar.
+/// PorcentajeIva null: el document no l'indicava per a aquesta línia.</summary>
 public sealed record LineaResumen(
+    int Id,
     int NumLinea,
     string Descripcion,
     decimal Cantidad,
     decimal PrecioUnitario,
-    decimal PorcentajeIva,
+    decimal? PorcentajeIva,
     decimal ImporteLinea);
 
 public sealed record IncidenciaResumen(string Codigo, string Detalle, DateTime FechaCreacion);

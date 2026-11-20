@@ -1,4 +1,3 @@
-using System.Globalization;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
 using ClassificadorExtractorDocumentos.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -76,7 +75,10 @@ public class FacturaStagingRepository(DocFlowDbContext db, TimeProvider timeProv
 
     public async Task<ResultadoAprobacion> AprobarAsync(int facturaId, CancellationToken cancellationToken = default)
     {
-        var factura = await db.FacturasStaging.FirstOrDefaultAsync(f => f.Id == facturaId, cancellationToken);
+        // Amb les incidències: s'apunten a l'historial les que quedaven pendents en aprovar
+        var factura = await db.FacturasStaging
+            .Include(f => f.Incidencias)
+            .FirstOrDefaultAsync(f => f.Id == facturaId, cancellationToken);
         if (factura is null)
         {
             return ResultadoAprobacion.Fallo($"No existe ninguna factura con id {facturaId}.");
@@ -91,89 +93,88 @@ public class FacturaStagingRepository(DocFlowDbContext db, TimeProvider timeProv
                 $"Solo se puede aprobar manualmente una factura en RevisionHumana (estado actual: {factura.Estado}).");
         }
 
-        factura.Estado = EstadoFactura.Validada;
-        factura.FechaAprobacionManual = timeProvider.GetUtcNow().UtcDateTime;
-        await db.SaveChangesAsync(cancellationToken);
-        return ResultadoAprobacion.Ok();
-    }
-
-    public async Task<ResultadoAprobacion> ActualizarAsync(
-        int facturaId,
-        ActualizarFacturaRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var factura = await db.FacturasStaging.FirstOrDefaultAsync(f => f.Id == facturaId, cancellationToken);
-        if (factura is null)
-        {
-            return ResultadoAprobacion.Fallo($"No existe ninguna factura con id {facturaId}.");
-        }
-        if (factura.FechaEliminacion is not null)
-        {
-            return ResultadoAprobacion.Fallo("La factura está eliminada.");
-        }
-        if (factura.Estado is not (EstadoFactura.Validada or EstadoFactura.RevisionHumana))
-        {
-            return ResultadoAprobacion.Fallo(
-                $"Solo se puede editar una factura en Validada o RevisionHumana (estado actual: {factura.Estado}).");
-        }
-
         var ahora = timeProvider.GetUtcNow().UtcDateTime;
-        var cambios = new List<HistorialCambioFactura>();
+        factura.Estado = EstadoFactura.Validada;
+        factura.FechaAprobacionManual = ahora;
 
-        void RegistrarSiCambia(string campo, string? valorAnterior, string? valorNuevo)
+        // "Aprovar igualment": queda constància de qui ho va aprovar, quan i amb quines incidències pendents
+        var pendientes = string.Join(", ", factura.Incidencias.Select(i => i.Codigo).Distinct());
+        db.HistorialCambiosFactura.Add(new HistorialCambioFactura
         {
-            if (valorAnterior == valorNuevo)
-            {
-                return;
-            }
-            cambios.Add(new HistorialCambioFactura
+            FacturaId = facturaId,
+            Campo = "Estado",
+            ValorAnterior = nameof(EstadoFactura.RevisionHumana),
+            ValorNuevo = $"{nameof(EstadoFactura.Validada)} (aprobación manual)",
+            FechaCambio = ahora,
+            Usuario = UsuarioPorDefecto,
+        });
+        if (pendientes.Length > 0)
+        {
+            db.HistorialCambiosFactura.Add(new HistorialCambioFactura
             {
                 FacturaId = facturaId,
-                Campo = campo,
-                ValorAnterior = valorAnterior,
-                ValorNuevo = valorNuevo,
+                Campo = "Aprobada con incidencias",
+                ValorAnterior = pendientes.Length <= 500 ? pendientes : pendientes[..500],
+                ValorNuevo = null,
                 FechaCambio = ahora,
                 Usuario = UsuarioPorDefecto,
             });
         }
 
-        RegistrarSiCambia(nameof(FacturaStaging.NifCliente), factura.NifCliente, request.NifCliente);
-        RegistrarSiCambia(nameof(FacturaStaging.NombreCliente), factura.NombreCliente, request.NombreCliente);
-        RegistrarSiCambia(nameof(FacturaStaging.NumeroFactura), factura.NumeroFactura, request.NumeroFactura);
-        RegistrarSiCambia(nameof(FacturaStaging.FechaFactura), Texto(factura.FechaFactura), Texto(request.FechaFactura));
-        RegistrarSiCambia(nameof(FacturaStaging.FechaVencimiento), Texto(factura.FechaVencimiento), Texto(request.FechaVencimiento));
-        RegistrarSiCambia(nameof(FacturaStaging.Moneda), factura.Moneda, request.Moneda);
-        RegistrarSiCambia(nameof(FacturaStaging.BaseImponible), Texto(factura.BaseImponible), Texto(request.BaseImponible));
-        RegistrarSiCambia(nameof(FacturaStaging.CuotaIva), Texto(factura.CuotaIva), Texto(request.CuotaIva));
-        RegistrarSiCambia(nameof(FacturaStaging.RetencionIrpf), Texto(factura.RetencionIrpf), Texto(request.RetencionIrpf));
-        RegistrarSiCambia(nameof(FacturaStaging.Total), Texto(factura.Total), Texto(request.Total));
-        RegistrarSiCambia(nameof(FacturaStaging.ReverseCharge), Texto(factura.ReverseCharge), Texto(request.ReverseCharge));
-
-        if (cambios.Count == 0)
-        {
-            return ResultadoAprobacion.Ok();
-        }
-
-        factura.NifCliente = request.NifCliente;
-        factura.NombreCliente = request.NombreCliente;
-        factura.NumeroFactura = request.NumeroFactura;
-        factura.FechaFactura = request.FechaFactura;
-        factura.FechaVencimiento = request.FechaVencimiento;
-        factura.Moneda = request.Moneda;
-        factura.BaseImponible = request.BaseImponible;
-        factura.CuotaIva = request.CuotaIva;
-        factura.RetencionIrpf = request.RetencionIrpf;
-        factura.Total = request.Total;
-        factura.ReverseCharge = request.ReverseCharge;
-
-        db.HistorialCambiosFactura.AddRange(cambios);
         await db.SaveChangesAsync(cancellationToken);
         return ResultadoAprobacion.Ok();
     }
 
-    private static string? Texto(DateOnly? valor) => valor?.ToString("O");
-    private static string Texto(DateOnly valor) => valor.ToString("O");
-    private static string? Texto(decimal? valor) => valor?.ToString(CultureInfo.InvariantCulture);
-    private static string Texto(decimal valor) => valor.ToString(CultureInfo.InvariantCulture);
-    private static string Texto(bool valor) => valor.ToString(CultureInfo.InvariantCulture);
+    public async Task<bool> ExisteOtraFacturaAsync(
+        string nifEmisor, string numeroFactura, int excluirFacturaId, CancellationToken cancellationToken = default)
+    {
+        // Mateixa condició que ExisteFacturaAsync, excloent la factura que s'està editant
+        using var activity = PersistenciaTracing.Source.StartActivity("bd.existe_otra_factura");
+        return await db.FacturasStaging.AnyAsync(
+            f => f.Id != excluirFacturaId
+                && f.NumeroFactura == numeroFactura && f.Proveedor != null && f.Proveedor.Nif == nifEmisor
+                && f.FechaEliminacion == null && f.Estado != EstadoFactura.Rechazada,
+            cancellationToken);
+    }
+
+    public Task<FacturaStaging?> ObtenerParaEdicionAsync(int facturaId, CancellationToken cancellationToken = default) =>
+        // Amb seguiment de canvis (sense AsNoTracking): el servei modifica aquesta mateixa instància i
+        // GuardarEdicionAsync la desa. Proveedor fa falta per revalidar (NIF de l'emissor).
+        db.FacturasStaging
+            .Include(f => f.Proveedor)
+            .Include(f => f.Lineas)
+            .Include(f => f.Incidencias)
+            .FirstOrDefaultAsync(f => f.Id == facturaId, cancellationToken);
+
+    public async Task<IReadOnlyList<string>> ObtenerCamposEditadosAsync(int facturaId, CancellationToken cancellationToken = default) =>
+        await db.HistorialCambiosFactura
+            .Where(h => h.FacturaId == facturaId)
+            .Select(h => h.Campo)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+    public async Task GuardarEdicionAsync(
+        FacturaStaging factura,
+        IReadOnlyList<FacturaLinea> lineasEliminadas,
+        IReadOnlyList<ValidacionIncidencia> incidenciasAnteriores,
+        IReadOnlyList<HistorialCambioFactura> cambios,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = PersistenciaTracing.Source.StartActivity("bd.guardar_edicion");
+
+        // Tot o res: si falla qualsevol pas, no queda una edició a mitges
+        await using var transaccion = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        // Les eliminacions es fan explícites (en lloc de dependre que EF detecti les línies "òrfenes"):
+        // es veu clarament què s'esborra.
+        db.FacturasLineas.RemoveRange(lineasEliminadas);
+        db.ValidacionIncidencias.RemoveRange(incidenciasAnteriores);
+        db.HistorialCambiosFactura.AddRange(cambios);
+
+        // La resta (canvis de capçalera, línies modificades i línies noves afegides a factura.Lineas, incidències
+        // noves) EF ho detecta sol perquè la factura es va llegir amb seguiment a ObtenerParaEdicionAsync.
+        await db.SaveChangesAsync(cancellationToken);
+        await transaccion.CommitAsync(cancellationToken);
+    }
+
 }
