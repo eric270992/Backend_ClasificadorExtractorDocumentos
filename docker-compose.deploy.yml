@@ -28,9 +28,12 @@ services:
       Database__Proveedor: "SqlServer"
       ConnectionStrings__SqlServer: "Server=db,1433;Database=DocFlowAI;User Id=sa;Password=${MSSQL_SA_PASSWORD:-DocFlow_Dev123!};TrustServerCertificate=True;"
       Database__MigrateOnStartup: "true"
-      # Proveedor LLM: "Groq" (nube, por defecto), "Nvidia" (nube, límite por petición no por token)
-      # o "Local" (LM Studio/Ollama). Se elige en el .env.
+      # Proveedor LLM: "Groq" (nube, por defecto), "Nvidia" (nube, límite por petición no por token),
+      # "EIO" (servidor de EIO) o "Local" (LM Studio/Ollama). Se elige en el .env.
       Llm__Proveedor: "${LLM_PROVIDER:-Groq}"
+      # EIO: el modelo viene en appsettings.json de la imagen; la URL y la clave NO se versionan (repo público).
+      Llm__Perfiles__EIO__BaseUrl: "${EIO_BASE_URL:-}"
+      Llm__Perfiles__EIO__ApiKey: "${EIO_API_KEY:-}"
       # Vacía por defecto: si usas otro proveedor no necesitas clave de Groq (no da aviso al arrancar).
       Llm__Perfiles__Groq__ApiKey: "${GROQ_API_KEY:-}"
       # Groq deprecia modelos con cierta frecuencia (ver https://console.groq.com/docs/deprecations).
