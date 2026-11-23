@@ -42,6 +42,10 @@ public sealed record FacturaDetalle(
     decimal? RetencionIrpf,
     decimal Total,
     bool ReverseCharge,
+    // Si els imports de línia ja porten l'IVA (tiquets) o no (factures). El frontend ho necessita per
+    // saber si la suma de línies és el total o la base en recalcular la capçalera. No és una columna
+    // de la taula: es llegeix del JSON original de l'extracció (com fa FacturaRevalidacionMapper).
+    bool LineasIncluyenIva,
     string Estado,
     byte NivelExtraccion,
     DateTime FechaIngesta,
