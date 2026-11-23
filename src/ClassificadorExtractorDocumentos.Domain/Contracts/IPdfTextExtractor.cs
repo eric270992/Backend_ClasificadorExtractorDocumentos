@@ -1,3 +1,5 @@
+using ClassificadorExtractorDocumentos.Domain.Grounding;
+
 namespace ClassificadorExtractorDocumentos.Domain.Contracts;
 
 /// <summary>
@@ -10,4 +12,9 @@ public interface IPdfTextExtractor
 {
     /// <summary>Null si el PDF no tiene texto aprovechable (escaneado/fotografiado, o vacío).</summary>
     Task<string?> ExtraerTextoAsync(Stream pdfStream, CancellationToken cancellationToken = default);
+
+    /// <summary>Paraules de cada pàgina amb la seva caixa normalitzada (0-1, origen a dalt a l'esquerra),
+    /// per localitzar on surt cada valor extret (grounding híbrid). Null si el PDF no té capa de text:
+    /// en aquest cas l'única manera de localitzar els camps és demanar-ho al model de visió.</summary>
+    Task<IReadOnlyList<PaginaPalabras>?> ExtraerPalabrasAsync(Stream pdfStream, CancellationToken cancellationToken = default);
 }

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
+using ClassificadorExtractorDocumentos.Domain.Grounding;
 using Microsoft.Extensions.Logging;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
@@ -68,6 +69,66 @@ public class PdfPigTextExtractor(ILogger<PdfPigTextExtractor> logger) : IPdfText
             logger.LogWarning(ex, "No se pudo extraer texto del PDF; se continúa solo con las imágenes.");
             return Task.FromResult<string?>(null);
         }
+    }
+
+    public Task<IReadOnlyList<PaginaPalabras>?> ExtraerPalabrasAsync(Stream pdfStream, CancellationToken cancellationToken = default)
+    {
+        using var activity = PdfTracing.Source.StartActivity("pdf.extract_words");
+        try
+        {
+            using var documento = PdfDocument.Open(pdfStream);
+
+            var paginas = new List<PaginaPalabras>();
+            var totalPalabras = 0;
+            foreach (var pagina in documento.GetPages())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var palabras = pagina.GetWords()
+                    .Where(palabra => !string.IsNullOrWhiteSpace(palabra.Text))
+                    .Select(palabra => new PalabraDocumento(palabra.Text, NormalizarCaja(pagina, palabra)))
+                    .ToList();
+
+                totalPalabras += palabras.Count;
+                paginas.Add(new PaginaPalabras(pagina.Number, pagina.Rotation.Value, palabras));
+            }
+
+            activity?.SetTag("pdf.words.count", totalPalabras);
+
+            // Mateix criteri que ExtraerTextoAsync: sense paraules, el PDF és escanejat i no hi ha capa de text
+            return Task.FromResult<IReadOnlyList<PaginaPalabras>?>(totalPalabras == 0 ? null : paginas);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            // Best-effort, igual que amb el text: el grounding és una ajuda visual, no pot fer caure res
+            logger.LogWarning(ex, "No se pudieron extraer las palabras del PDF para el grounding.");
+            return Task.FromResult<IReadOnlyList<PaginaPalabras>?>(null);
+        }
+    }
+
+    /// <summary>Passa la caixa d'una paraula de punts PDF a coordenades 0-1 de la imatge renderitzada.
+    /// <para>
+    /// Dues diferències entre el sistema de coordenades del PDF i el de la imatge:
+    /// 1) Al PDF la Y creix cap amunt (origen a baix a l'esquerra); a la imatge creix cap avall. Per això
+    ///    la Y de dalt de la imatge surt de la vora SUPERIOR de la paraula (<c>Top</c>) i s'inverteix.
+    /// 2) PDFium renderitza la CropBox (la zona visible), que pot no començar a (0,0). Restem el seu origen
+    ///    i dividim per la seva mida perquè la caixa quadri amb la imatge.
+    /// </para>
+    /// LIMITACIÓ coneguda (prova): no es tenen en compte les pàgines amb rotació (/Rotate 90/180/270);
+    /// en aquests casos les caixes sortirien girades. El servei ho avisa a la resposta.</summary>
+    private static CajaNormalizada NormalizarCaja(Page pagina, Word palabra)
+    {
+        var zonaVisible = pagina.CropBox.Bounds;
+        var ancho = Math.Max(zonaVisible.Width, 1.0);
+        var alto = Math.Max(zonaVisible.Height, 1.0);
+
+        var caja = palabra.BoundingBox;
+        return CajaNormalizada.Crear(
+            x1: (caja.Left - zonaVisible.Left) / ancho,
+            y1: 1.0 - (caja.Top - zonaVisible.Bottom) / alto,
+            x2: (caja.Right - zonaVisible.Left) / ancho,
+            y2: 1.0 - (caja.Bottom - zonaVisible.Bottom) / alto);
     }
 
     /// <summary>Reconstruye el texto de una página fila a fila y columna a columna.</summary>
