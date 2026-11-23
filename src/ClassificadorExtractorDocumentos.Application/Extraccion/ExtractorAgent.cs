@@ -88,7 +88,8 @@ public class ExtractorAgent(ILlmClient llmClient, ILogger<ExtractorAgent> logger
         string.IsNullOrWhiteSpace(textoPdf)
             ? usuarioBase
             : $"{usuarioBase}\n\nTexto extraído directamente del PDF (más fiable que leerlo en la imagen " +
-              $"para números, porcentajes e importes — úsalo como referencia):\n---\n{textoPdf}\n---";
+              $"para números, porcentajes e importes — úsalo como referencia). El texto respeta la maqueta: " +
+              $"cada fila de texto es una fila del documento y las columnas están alineadas con espacios:\n---\n{textoPdf}\n---";
 
 }
 

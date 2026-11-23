@@ -27,3 +27,6 @@ appsettings.*.Local.json
 
 ## Documentación/notas locales (NO versionar): apuntes personales que no deben subirse
 docs/local/
+
+# Factura real (dades d'un client): no es puja; pendent d'anonimitzar
+tests/Fixtures/0100604104523Cert.pdf

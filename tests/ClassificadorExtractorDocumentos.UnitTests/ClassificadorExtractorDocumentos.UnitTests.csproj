@@ -22,6 +22,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ClassificadorExtractorDocumentos.Domain\ClassificadorExtractorDocumentos.Domain.csproj" />
     <ProjectReference Include="..\..\src\ClassificadorExtractorDocumentos.Application\ClassificadorExtractorDocumentos.Application.csproj" />
+    <ProjectReference Include="..\..\src\ClassificadorExtractorDocumentos.Infrastructure\ClassificadorExtractorDocumentos.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Fixtures\0100604104523Cert.pdf" Condition="Exists('..\Fixtures\0100604104523Cert.pdf')" Link="Fixtures\0100604104523Cert.pdf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
