@@ -2,6 +2,7 @@ using ClassificadorExtractorDocumentos.Application.Edicion;
 using ClassificadorExtractorDocumentos.Application.Grounding;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace ClassificadorExtractorDocumentos.Api.Controllers;
 
@@ -15,8 +16,11 @@ public class FacturasController(
     IFacturaConsultaService consultas,
     IFacturaStagingRepository repositorio,
     FacturaEdicionService edicion,
-    GroundingService grounding) : ControllerBase
+    GroundingService grounding,
+    IOptions<GroundingOptions> groundingOptions) : ControllerBase
 {
+    private const string GroundingDeshabilitado = "El grounding está deshabilitado (Grounding:Habilitado=false).";
+
     [HttpGet]
     public async Task<IActionResult> Listar(CancellationToken cancellationToken)
     {
@@ -69,6 +73,11 @@ public class FacturasController(
     [HttpGet("{id:int}/grounding")]
     public async Task<IActionResult> Grounding(int id, CancellationToken cancellationToken, [FromQuery] string metodo = GroundingService.MetodoHibrido)
     {
+        if (!groundingOptions.Value.Habilitado)
+        {
+            return NotFound(GroundingDeshabilitado);
+        }
+
         if (!GroundingService.EsMetodoValido(metodo))
         {
             return BadRequest($"Método de grounding no válido: '{metodo}'. Usa '{GroundingService.MetodoHibrido}' o '{GroundingService.MetodoLlm}'.");
@@ -85,6 +94,11 @@ public class FacturasController(
     [HttpGet("{id:int}/paginas/{pagina:int}")]
     public async Task<IActionResult> Pagina(int id, int pagina, CancellationToken cancellationToken)
     {
+        if (!groundingOptions.Value.Habilitado)
+        {
+            return NotFound(GroundingDeshabilitado);
+        }
+
         var imagen = await grounding.ObtenerImagenPaginaAsync(id, pagina, cancellationToken);
         return imagen is null
             ? NotFound($"No existe la página {pagina} de la factura {id}.")

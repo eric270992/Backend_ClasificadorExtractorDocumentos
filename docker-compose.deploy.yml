@@ -50,6 +50,8 @@ services:
       Storage__BasePath: "/data/documentos"
     extra_hosts:
       - "host.docker.internal:host-gateway"   # permite alcanzar un LLM local en el host (Linux)
+      # Prueba de grounding ("D'on surt cada dada"): desactivado por defecto. GROUNDING_HABILITADO=true en el .env lo activa.
+      Grounding__Habilitado: "${GROUNDING_HABILITADO:-false}"
     ports:
       - "5255:8080"
     volumes:

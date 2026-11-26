@@ -17,6 +17,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IngestaOptions>(configuration.GetSection(IngestaOptions.SectionName));
+        services.Configure<GroundingOptions>(configuration.GetSection(GroundingOptions.SectionName));
 
         services.AddScoped<IngestaDocumentoService>();
         services.AddScoped<ExtractorAgent>();
