@@ -5,9 +5,8 @@ name: docflow-ai
 #   1) instala Docker
 #   2) descarga este fichero y crea un .env con GROQ_API_KEY y MSSQL_SA_PASSWORD
 #   3) docker compose -f docker-compose.deploy.yml up -d
-#   3b) define APP_DOMAIN (nombre con el que se accede, p. ej. docflow.eio.cat) y deja el certificado
-#       CERT_B64 y KEY_B64: certificado y clave en PEM codificados en base64 (una sola línea), como variables del stack
-#   4) abre https://<APP_DOMAIN>
+#   3b) define el certificado HTTPS con CERT_B64 y KEY_B64: certificado y clave en PEM codificados en base64 (una sola línea), como variables del stack
+#   4) abre https://<nombre del servidor> (el certificado debe cubrir ese nombre)
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -115,10 +114,15 @@ services:
 configs:
   caddyfile:
     content: |
-      ${APP_DOMAIN} {
+      # Sin nombre de dominio: responde con el nombre con el que se acceda (p. ej. portainer01.eio.local),
+      # siempre que el certificado lo cubra.
+      :443 {
         tls /certs/${CERT_FILE:-server.crt} /certs/${KEY_FILE:-server.key}
         encode gzip
         reverse_proxy web:80
+      }
+      :80 {
+        redir https://{host}{uri} permanent
       }
 
 volumes:
