@@ -51,6 +51,10 @@ services:
       Storage__BasePath: "/data/documentos"
       # Prueba de grounding ("D'on surt cada dada"): desactivado por defecto. GROUNDING_HABILITADO=true en el .env lo activa.
       Grounding__Habilitado: "${GROUNDING_HABILITADO:-false}"
+      # Documentació de l'API amb Scalar a https://<servidor>/api/scalar (JSON a /api/openapi/v1.json).
+      # DOCS_HABILITADA=false al .env la desactiva. El prefix és el de la ruta /api/ de nginx.
+      Documentacio__Habilitada: "${DOCS_HABILITADA:-true}"
+      Documentacio__PrefixPublic: "/api"
     extra_hosts:
       - "host.docker.internal:host-gateway"   # permite alcanzar un LLM local en el host (Linux)
     # Sin "ports": la API solo se alcanza a través de web/caddy. Si necesitas llamarla directa

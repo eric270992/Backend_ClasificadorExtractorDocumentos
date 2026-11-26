@@ -5,9 +5,11 @@ using ClassificadorExtractorDocumentos.Infrastructure.Pdf;
 using ClassificadorExtractorDocumentos.Infrastructure.Persistence;
 using ClassificadorExtractorDocumentos.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
 using Serilog;
 
 namespace ClassificadorExtractorDocumentos
@@ -37,7 +39,19 @@ namespace ClassificadorExtractorDocumentos
 
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+            // Documentació de l'API (OpenAPI + Scalar). Activa en Development; al desplegament s'activa amb
+            // Documentacio:Habilitada=true. PrefixPublic és el prefix amb què el proxy exposa l'API (nginx: "/api").
+            var documentacioHabilitada = builder.Environment.IsDevelopment()
+                || builder.Configuration.GetValue("Documentacio:Habilitada", false);
+            var prefixPublic = builder.Configuration["Documentacio:PrefixPublic"]?.TrimEnd('/') ?? "";
+            builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+            {
+                if (prefixPublic.Length > 0)
+                {
+                    document.Servers = [new OpenApiServer { Url = prefixPublic }];
+                }
+                return Task.CompletedTask;
+            }));
             builder.Services.AddApplication(builder.Configuration);
             builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -98,9 +112,12 @@ namespace ClassificadorExtractorDocumentos
             }
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            if (documentacioHabilitada)
             {
                 app.MapOpenApi();
+                // El navegador demana el JSON a través del proxy, per això la ruta porta el prefix públic.
+                app.MapScalarApiReference(options =>
+                    options.WithOpenApiRoutePattern($"{prefixPublic}/openapi/{{documentName}}.json"));
             }
 
             // Migración al arrancar: crea la BD y aplica migraciones pendientes. Activa por defecto
