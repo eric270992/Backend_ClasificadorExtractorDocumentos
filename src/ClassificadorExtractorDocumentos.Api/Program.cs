@@ -115,9 +115,10 @@ namespace ClassificadorExtractorDocumentos
             if (documentacioHabilitada)
             {
                 app.MapOpenApi();
-                // El navegador demana el JSON a través del proxy, per això la ruta porta el prefix públic.
+                // Scalar treu la barra inicial i la ruta queda relativa a la pàgina (/scalar/v1 o /api/scalar/v1
+                // darrere del proxy): "../openapi/..." arriba al JSON amb o sense prefix.
                 app.MapScalarApiReference(options =>
-                    options.WithOpenApiRoutePattern($"{prefixPublic}/openapi/{{documentName}}.json"));
+                    options.WithOpenApiRoutePattern("../openapi/{documentName}.json"));
             }
 
             // Migración al arrancar: crea la BD y aplica migraciones pendientes. Activa por defecto
