@@ -6,7 +6,7 @@ name: docflow-ai
 #   2) descarga este fichero y crea un .env con GROQ_API_KEY y MSSQL_SA_PASSWORD
 #   3) docker compose -f docker-compose.deploy.yml up -d
 #   3b) define APP_DOMAIN (nombre con el que se accede, p. ej. docflow.eio.cat) y deja el certificado
-#       server.crt + server.key en la carpeta del servidor indicada por CERTS_PATH
+#       CERT_B64 y KEY_B64: certificado y clave en PEM codificados en base64 (una sola línea), como variables del stack
 #   4) abre https://<APP_DOMAIN>
 services:
   db:
@@ -70,10 +70,29 @@ services:
       - api
 
   # Proxy inverso HTTPS: termina el TLS con TU certificado y reenvía a "web" por HTTP interno.
-  # Necesita en el servidor, en la carpeta CERTS_PATH, dos ficheros:
+  # Los ficheros del certificado los escribe "certs-init" en el volumen docflow-certs a partir de las variables
+  # CERT_B64 y KEY_B64 (así no hay que subir nada al servidor ni al repositorio). Caddy los lee de ahí:
   #   server.crt  (o el nombre de CERT_FILE; certificado + cadena intermedia, formato PEM)
   #   server.key  (o el nombre de KEY_FILE; clave privada, formato PEM)
   # Para cambiar de certificado: sustituye los ficheros y reinicia el servicio caddy.
+  certs-init:
+    image: alpine:3
+    restart: "no"
+    environment:
+      CERT_B64: "${CERT_B64:?define CERT_B64 (certificado PEM en base64)}"
+      KEY_B64: "${KEY_B64:?define KEY_B64 (clave privada PEM en base64)}"
+      CERT_FILE: "${CERT_FILE:-server.crt}"
+      KEY_FILE: "${KEY_FILE:-server.key}"
+    command:
+      - sh
+      - -c
+      - |
+        echo "$$CERT_B64" | base64 -d > "/certs/$$CERT_FILE" &&
+        echo "$$KEY_B64" | base64 -d > "/certs/$$KEY_FILE" &&
+        chmod 600 "/certs/$$KEY_FILE"
+    volumes:
+      - docflow-certs:/certs
+
   caddy:
     image: caddy:2
     ports:
@@ -83,11 +102,14 @@ services:
       - source: caddyfile
         target: /etc/caddy/Caddyfile
     volumes:
-      - "${CERTS_PATH:-/opt/docflow/certs}:/certs:ro"
+      - docflow-certs:/certs:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      - web
+      web:
+        condition: service_started
+      certs-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 configs:
@@ -103,5 +125,6 @@ volumes:
   docflow-db:
   docflow-files:
   docflow-logs:
+  docflow-certs:
   caddy-data:
   caddy-config:
