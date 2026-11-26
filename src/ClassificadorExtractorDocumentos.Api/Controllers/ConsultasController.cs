@@ -1,3 +1,4 @@
+using ClassificadorExtractorDocumentos.Api.DTOs;
 using ClassificadorExtractorDocumentos.Application.Consultor;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,6 +12,9 @@ public class ConsultasController(ConsultorAgent consultor) : ControllerBase
     public sealed record PreguntaRequest(string Pregunta);
 
     [HttpPost]
+    [ProducesResponseType<DTOConsultaRespuesta>(StatusCodes.Status200OK)]
+    [ProducesResponseType<string>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<DTOConsultaRechazada>(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Preguntar([FromBody] PreguntaRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request?.Pregunta))
@@ -22,15 +26,13 @@ public class ConsultasController(ConsultorAgent consultor) : ControllerBase
 
         // La respuesta SIEMPRE incluye el SQL (criterio E1-F4: transparencia de lo ejecutado)
         return r.Exito
-            ? Ok(new
-            {
+            ? Ok(new DTOConsultaRespuesta(
                 r.Respuesta,
                 r.Explicacion,
                 r.Sql,
-                NumFilas = r.Datos!.Filas.Count,
+                NumFilas: r.Datos!.Filas.Count,
                 r.Datos.Columnas,
-                r.Datos.Filas,
-            })
-            : UnprocessableEntity(new { r.Motivo, SqlGenerado = r.Sql });
+                r.Datos.Filas))
+            : UnprocessableEntity(new DTOConsultaRechazada(r.Motivo, SqlGenerado: r.Sql));
     }
 }

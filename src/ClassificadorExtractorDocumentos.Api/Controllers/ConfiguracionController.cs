@@ -1,3 +1,4 @@
+using ClassificadorExtractorDocumentos.Api.DTOs;
 using ClassificadorExtractorDocumentos.Application.Grounding;
 using ClassificadorExtractorDocumentos.Application.Ingesta;
 using Microsoft.AspNetCore.Mvc;
@@ -15,10 +16,9 @@ namespace ClassificadorExtractorDocumentos.Api.Controllers;
 public class ConfiguracionController(IngestaDocumentoService ingestaService, IOptions<GroundingOptions> groundingOptions) : ControllerBase
 {
     [HttpGet]
-    public IActionResult Obtener() => Ok(new
-    {
-        MaxPaginasPorDocumento = ingestaService.ObtenerMaxPaginasPorDocumento(),
-        TamanoMaximoMb = DocumentosController.TamanoMaximoBytes / (1024 * 1024),
-        GroundingHabilitado = groundingOptions.Value.Habilitado,
-    });
+    [ProducesResponseType<DTOConfiguracion>(StatusCodes.Status200OK)]
+    public IActionResult Obtener() => Ok(new DTOConfiguracion(
+        MaxPaginasPorDocumento: ingestaService.ObtenerMaxPaginasPorDocumento(),
+        TamanoMaximoMb: DocumentosController.TamanoMaximoBytes / (1024 * 1024),
+        GroundingHabilitado: groundingOptions.Value.Habilitado));
 }

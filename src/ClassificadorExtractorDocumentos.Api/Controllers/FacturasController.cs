@@ -1,3 +1,4 @@
+using ClassificadorExtractorDocumentos.Api.DTOs;
 using ClassificadorExtractorDocumentos.Application.Edicion;
 using ClassificadorExtractorDocumentos.Application.Grounding;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
@@ -22,6 +23,7 @@ public class FacturasController(
     private const string GroundingDeshabilitado = "El grounding está deshabilitado (Grounding:Habilitado=false).";
 
     [HttpGet]
+    [ProducesResponseType<IReadOnlyList<FacturaResumen>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Listar(CancellationToken cancellationToken)
     {
         var facturas = await consultas.ListarAsync(cancellationToken);
@@ -29,6 +31,8 @@ public class FacturasController(
     }
 
     [HttpGet("{id:int}")]
+    [ProducesResponseType<FacturaDetalle>(StatusCodes.Status200OK)]
+    [ProducesResponseType<string>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Detalle(int id, CancellationToken cancellationToken)
     {
         var factura = await consultas.ObtenerDetalleAsync(id, cancellationToken);
@@ -39,6 +43,8 @@ public class FacturasController(
 
     /// <summary>Aprobación manual: solo válida si la factura está en RevisionHumana.</summary>
     [HttpPost("{id:int}/aprobar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<string>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Aprobar(int id, CancellationToken cancellationToken)
     {
         var resultado = await repositorio.AprobarAsync(id, cancellationToken);
@@ -50,6 +56,8 @@ public class FacturasController(
     /// auditoría. Tras editar se vuelven a pasar las reglas: devuelve el nuevo estado y las incidencias.
     /// Si la edición provocaría un Rechazo (p. ej. número duplicado), no se guarda nada (400 con el motivo).</summary>
     [HttpPut("{id:int}")]
+    [ProducesResponseType<DTOEdicionFactura>(StatusCodes.Status200OK)]
+    [ProducesResponseType<string>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Actualizar(int id, ActualizarFacturaRequest request, CancellationToken cancellationToken)
     {
         // L'edició (capçalera i línies) i la revalidació les fa el servei; aquí només es tradueix a HTTP
@@ -60,17 +68,18 @@ public class FacturasController(
         }
 
         // Es retorna l'estat i les incidències després de revalidar, perquè el frontend ho pugui mostrar
-        return Ok(new
-        {
-            Estado = resultado.Estado!.Value.ToString(),
+        return Ok(new DTOEdicionFactura(
+            resultado.Estado!.Value.ToString(),
             resultado.HuboCambios,
-            Incidencias = resultado.Incidencias.Select(i => new { i.Codigo, i.Detalle, Severidad = i.Severidad.ToString() }),
-        });
+            resultado.Incidencias.Select(i => new DTOIncidencia(i.Codigo, i.Detalle, i.Severidad.ToString()))));
     }
 
     /// <summary>Grounding (prova): on és cada camp de la factura dins el document, amb caixes normalitzades 0-1.
     /// metodo=hibrido (per defecte; PDF amb text, sense cost de model) o metodo=llm (model de visió; també fotos).</summary>
     [HttpGet("{id:int}/grounding")]
+    [ProducesResponseType<ResultadoGrounding>(StatusCodes.Status200OK)]
+    [ProducesResponseType<string>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<string>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Grounding(int id, CancellationToken cancellationToken, [FromQuery] string metodo = GroundingService.MetodoHibrido)
     {
         if (!groundingOptions.Value.Habilitado)
@@ -92,6 +101,8 @@ public class FacturasController(
     /// <summary>Imatge PNG d'una pàgina del document (1 = primera), per pintar-hi les caixes al visor.
     /// Es serveix per id de factura (i no de document) perquè és l'únic id que coneix el frontend.</summary>
     [HttpGet("{id:int}/paginas/{pagina:int}")]
+    [ProducesResponseType(typeof(byte[]), StatusCodes.Status200OK, "image/png")]
+    [ProducesResponseType<string>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Pagina(int id, int pagina, CancellationToken cancellationToken)
     {
         if (!groundingOptions.Value.Habilitado)
@@ -108,6 +119,8 @@ public class FacturasController(
     /// <summary>Eliminación lógica (soft delete): la factura deja de aparecer en el listado,
     /// pero no se borra físicamente (permite reprocesar el mismo proveedor+número).</summary>
     [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<string>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Eliminar(int id, CancellationToken cancellationToken)
     {
         var eliminada = await repositorio.EliminarAsync(id, cancellationToken);
