@@ -71,8 +71,8 @@ services:
 
   # Proxy inverso HTTPS: termina el TLS con TU certificado y reenvía a "web" por HTTP interno.
   # Necesita en el servidor, en la carpeta CERTS_PATH, dos ficheros:
-  #   server.crt  (certificado + cadena intermedia, formato PEM)
-  #   server.key  (clave privada, formato PEM)
+  #   server.crt  (o el nombre de CERT_FILE; certificado + cadena intermedia, formato PEM)
+  #   server.key  (o el nombre de KEY_FILE; clave privada, formato PEM)
   # Para cambiar de certificado: sustituye los ficheros y reinicia el servicio caddy.
   caddy:
     image: caddy:2
@@ -94,7 +94,7 @@ configs:
   caddyfile:
     content: |
       ${APP_DOMAIN} {
-        tls /certs/server.crt /certs/server.key
+        tls /certs/${CERT_FILE:-server.crt} /certs/${KEY_FILE:-server.key}
         encode gzip
         reverse_proxy web:80
       }
