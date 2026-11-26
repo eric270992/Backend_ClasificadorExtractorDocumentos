@@ -1,6 +1,7 @@
 using ClassificadorExtractorDocumentos.Application.Consultor;
 using ClassificadorExtractorDocumentos.Application.Edicion;
 using ClassificadorExtractorDocumentos.Application.Extraccion;
+using ClassificadorExtractorDocumentos.Application.Grounding;
 using ClassificadorExtractorDocumentos.Application.Ingesta;
 using ClassificadorExtractorDocumentos.Application.Ingesta.Maf;
 using ClassificadorExtractorDocumentos.Application.Validacion;
@@ -16,12 +17,18 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IngestaOptions>(configuration.GetSection(IngestaOptions.SectionName));
+        services.Configure<GroundingOptions>(configuration.GetSection(GroundingOptions.SectionName));
 
         services.AddScoped<IngestaDocumentoService>();
         services.AddScoped<ExtractorAgent>();
         services.AddScoped<ValidadorAgent>();
         services.AddScoped<ConsultorAgent>();
         services.AddScoped<FacturaEdicionService>();
+
+        // Grounding (prova, feature/grounding): d'on surt cada dada dins el document. Scoped com la resta
+        // de serveis perquè depèn del repositori, que fa servir el DbContext (scoped).
+        services.AddScoped<GroundingLlmAgent>();
+        services.AddScoped<GroundingService>();
         services.AddSingleton(TimeProvider.System);
 
         // Pipeline de ingesta: motor conmutable (SPEC §7). "Maf" (Etapa 2, por defecto) o "Manual" (plan B).

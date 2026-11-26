@@ -1,6 +1,8 @@
 using ClassificadorExtractorDocumentos.Application.Edicion;
+using ClassificadorExtractorDocumentos.Application.Grounding;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace ClassificadorExtractorDocumentos.Api.Controllers;
 
@@ -13,8 +15,12 @@ namespace ClassificadorExtractorDocumentos.Api.Controllers;
 public class FacturasController(
     IFacturaConsultaService consultas,
     IFacturaStagingRepository repositorio,
-    FacturaEdicionService edicion) : ControllerBase
+    FacturaEdicionService edicion,
+    GroundingService grounding,
+    IOptions<GroundingOptions> groundingOptions) : ControllerBase
 {
+    private const string GroundingDeshabilitado = "El grounding está deshabilitado (Grounding:Habilitado=false).";
+
     [HttpGet]
     public async Task<IActionResult> Listar(CancellationToken cancellationToken)
     {
@@ -60,6 +66,43 @@ public class FacturasController(
             resultado.HuboCambios,
             Incidencias = resultado.Incidencias.Select(i => new { i.Codigo, i.Detalle, Severidad = i.Severidad.ToString() }),
         });
+    }
+
+    /// <summary>Grounding (prova): on és cada camp de la factura dins el document, amb caixes normalitzades 0-1.
+    /// metodo=hibrido (per defecte; PDF amb text, sense cost de model) o metodo=llm (model de visió; també fotos).</summary>
+    [HttpGet("{id:int}/grounding")]
+    public async Task<IActionResult> Grounding(int id, CancellationToken cancellationToken, [FromQuery] string metodo = GroundingService.MetodoHibrido)
+    {
+        if (!groundingOptions.Value.Habilitado)
+        {
+            return NotFound(GroundingDeshabilitado);
+        }
+
+        if (!GroundingService.EsMetodoValido(metodo))
+        {
+            return BadRequest($"Método de grounding no válido: '{metodo}'. Usa '{GroundingService.MetodoHibrido}' o '{GroundingService.MetodoLlm}'.");
+        }
+
+        var resultado = await grounding.LocalizarAsync(id, metodo, cancellationToken);
+        return resultado is null
+            ? NotFound($"No existe ninguna factura con id {id} (o no se encuentra su documento).")
+            : Ok(resultado);
+    }
+
+    /// <summary>Imatge PNG d'una pàgina del document (1 = primera), per pintar-hi les caixes al visor.
+    /// Es serveix per id de factura (i no de document) perquè és l'únic id que coneix el frontend.</summary>
+    [HttpGet("{id:int}/paginas/{pagina:int}")]
+    public async Task<IActionResult> Pagina(int id, int pagina, CancellationToken cancellationToken)
+    {
+        if (!groundingOptions.Value.Habilitado)
+        {
+            return NotFound(GroundingDeshabilitado);
+        }
+
+        var imagen = await grounding.ObtenerImagenPaginaAsync(id, pagina, cancellationToken);
+        return imagen is null
+            ? NotFound($"No existe la página {pagina} de la factura {id}.")
+            : File(imagen, "image/png");
     }
 
     /// <summary>Eliminación lógica (soft delete): la factura deja de aparecer en el listado,

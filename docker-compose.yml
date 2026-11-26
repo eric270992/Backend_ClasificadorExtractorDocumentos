@@ -38,6 +38,8 @@ services:
       Llm__Perfiles__Local__BaseUrl: "${LLM_LOCAL_BASEURL:-http://host.docker.internal:1234/v1}"
       Llm__Perfiles__Local__Model: "${LLM_LOCAL_MODEL:-qwen/qwen2.5-vl-7b}"
       Storage__BasePath: "/data/documentos"
+      # Prueba de grounding ("D'on surt cada dada"): desactivado por defecto. GROUNDING_HABILITADO=true en el .env lo activa.
+      Grounding__Habilitado: "${GROUNDING_HABILITADO:-false}"
     extra_hosts:
       - "host.docker.internal:host-gateway"   # permite alcanzar un LLM local en el host (Linux)
     ports:

@@ -56,4 +56,50 @@ public class FileSystemDocumentStorage(IOptions<StorageOptions> options) : IDocu
         }
         return imagenes;
     }
+
+    public async Task<byte[]?> ObtenerImagenPaginaAsync(Guid documentoId, int pagina, CancellationToken cancellationToken = default)
+    {
+        using var activity = DocumentosTracing.Source.StartActivity("storage.leer_pagina");
+
+        // El nom de fitxer el construïm nosaltres a partir d'un Guid i un int: no hi ha cap manera que
+        // la petició HTTP colui un "../" i llegeixi fora de la carpeta del document.
+        var rutaPagina = Path.Combine(_basePath, documentoId.ToString(), $"page-{pagina}.png");
+        if (!File.Exists(rutaPagina))
+        {
+            return null;
+        }
+
+        return await File.ReadAllBytesAsync(rutaPagina, cancellationToken);
+    }
+
+    public Task<int> ContarPaginasAsync(Guid documentoId, CancellationToken cancellationToken = default)
+    {
+        var carpetaDocumento = Path.Combine(_basePath, documentoId.ToString());
+        var paginas = Directory.Exists(carpetaDocumento)
+            ? Directory.GetFiles(carpetaDocumento, "page-*.png").Length
+            : 0;
+        return Task.FromResult(paginas);
+    }
+
+    public async Task<DocumentoOriginal?> ObtenerOriginalAsync(Guid documentoId, CancellationToken cancellationToken = default)
+    {
+        using var activity = DocumentosTracing.Source.StartActivity("storage.leer_original");
+
+        var carpetaDocumento = Path.Combine(_basePath, documentoId.ToString());
+        if (!Directory.Exists(carpetaDocumento))
+        {
+            return null;
+        }
+
+        // GuardarDocumentoAsync el desa com "original.{extensió}": n'hi ha exactament un per carpeta
+        var rutaOriginal = Directory.GetFiles(carpetaDocumento, "original.*").FirstOrDefault();
+        if (rutaOriginal is null)
+        {
+            return null;
+        }
+
+        var bytes = await File.ReadAllBytesAsync(rutaOriginal, cancellationToken);
+        var extension = Path.GetExtension(rutaOriginal).TrimStart('.').ToLowerInvariant();
+        return new DocumentoOriginal(bytes, extension);
+    }
 }

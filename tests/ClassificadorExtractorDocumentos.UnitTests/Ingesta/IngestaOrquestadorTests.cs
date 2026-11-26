@@ -3,6 +3,7 @@ using ClassificadorExtractorDocumentos.Application.Ingesta;
 using ClassificadorExtractorDocumentos.Application.Validacion;
 using ClassificadorExtractorDocumentos.Domain.Contracts;
 using ClassificadorExtractorDocumentos.Domain.Entities;
+using ClassificadorExtractorDocumentos.Domain.Grounding;
 using ClassificadorExtractorDocumentos.Domain.Validacion.Reglas;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -117,6 +118,10 @@ public class IngestaOrquestadorTests
     {
         public Task<string?> ExtraerTextoAsync(Stream pdfStream, CancellationToken ct = default) =>
             Task.FromResult<string?>(null);
+
+        // Mètode del grounding: aquests tests no el fan servir
+        public Task<IReadOnlyList<PaginaPalabras>?> ExtraerPalabrasAsync(Stream pdfStream, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<PaginaPalabras>?>(null);
     }
 
     private sealed class NormalizerFake : IImagenNormalizer
@@ -138,6 +143,15 @@ public class IngestaOrquestadorTests
 
         public Task<IReadOnlyList<byte[]>?> ObtenerImagenesAsync(Guid id, CancellationToken ct = default) =>
             Task.FromResult(_paginas);
+
+        // Mètodes del grounding: aquests tests no els fan servir
+        public Task<byte[]?> ObtenerImagenPaginaAsync(Guid id, int pagina, CancellationToken ct = default) =>
+            Task.FromResult<byte[]?>(null);
+
+        public Task<int> ContarPaginasAsync(Guid id, CancellationToken ct = default) => Task.FromResult(0);
+
+        public Task<DocumentoOriginal?> ObtenerOriginalAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult<DocumentoOriginal?>(null);
     }
 
     private sealed class RepositorioFake : IFacturaStagingRepository
