@@ -5,7 +5,9 @@ name: docflow-ai
 #   1) instala Docker
 #   2) descarga este fichero y crea un .env con GROQ_API_KEY y MSSQL_SA_PASSWORD
 #   3) docker compose -f docker-compose.deploy.yml up -d
-#   4) abre http://localhost:8080
+#   3b) define APP_DOMAIN (nombre con el que se accede, p. ej. docflow.eio.cat) y deja el certificado
+#       server.crt + server.key en la carpeta del servidor indicada por CERTS_PATH
+#   4) abre https://<APP_DOMAIN>
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -48,12 +50,12 @@ services:
       Llm__Perfiles__Local__BaseUrl: "${LLM_LOCAL_BASEURL:-http://host.docker.internal:1234/v1}"
       Llm__Perfiles__Local__Model: "${LLM_LOCAL_MODEL:-qwen/qwen2.5-vl-7b}"
       Storage__BasePath: "/data/documentos"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"   # permite alcanzar un LLM local en el host (Linux)
       # Prueba de grounding ("D'on surt cada dada"): desactivado por defecto. GROUNDING_HABILITADO=true en el .env lo activa.
       Grounding__Habilitado: "${GROUNDING_HABILITADO:-false}"
-    ports:
-      - "5255:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # permite alcanzar un LLM local en el host (Linux)
+    # Sin "ports": la API solo se alcanza a través de web/caddy. Si necesitas llamarla directa
+    # para depurar, añade temporalmente:  ports: ["5255:8080"]
     volumes:
       - docflow-files:/data/documentos
       - docflow-logs:/app/logs
@@ -63,12 +65,43 @@ services:
 
   web:
     image: ghcr.io/eric270992/docflow-ai-web:latest
-    ports:
-      - "8080:80"
+    # Sin "ports": solo es accesible desde el proxy HTTPS (caddy) por la red interna del stack.
     depends_on:
       - api
+
+  # Proxy inverso HTTPS: termina el TLS con TU certificado y reenvía a "web" por HTTP interno.
+  # Necesita en el servidor, en la carpeta CERTS_PATH, dos ficheros:
+  #   server.crt  (certificado + cadena intermedia, formato PEM)
+  #   server.key  (clave privada, formato PEM)
+  # Para cambiar de certificado: sustituye los ficheros y reinicia el servicio caddy.
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"     # redirige a HTTPS
+      - "443:443"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - "${CERTS_PATH:-/opt/docflow/certs}:/certs:ro"
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+
+configs:
+  caddyfile:
+    content: |
+      ${APP_DOMAIN} {
+        tls /certs/server.crt /certs/server.key
+        encode gzip
+        reverse_proxy web:80
+      }
 
 volumes:
   docflow-db:
   docflow-files:
   docflow-logs:
+  caddy-data:
+  caddy-config:
